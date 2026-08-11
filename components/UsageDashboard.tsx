@@ -29,9 +29,8 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import apiClient, { reviewApi, socialsApi } from '@/lib/api-client';
+import { reviewApi } from '@/lib/api-client';
 import { UsageStats, SocialLinks } from '@/lib/data-store';
-import { SocialsModal } from './SocialsModal';
 
 const DEFAULT_SOCIALS: SocialLinks = {
   github: "https://github.com/Jamshid-Khamroyev",
@@ -48,7 +47,6 @@ export const UsageDashboard: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [chartMode, setChartMode] = useState<'weekly' | 'monthly'>('weekly');
   const [chartMetric, setChartMetric] = useState<'traffic' | 'duration'>('traffic');
-  const [isSocialsModalOpen, setIsSocialsModalOpen] = useState<boolean>(false);
 
   useEffect(() => {
     let ignore = false;
