@@ -55,6 +55,7 @@ export interface ReviewAnalytics {
 
 export interface UsageStats {
   totalVisits: number;
+  totalUsageTime: string; // e.g., "184 soat 45m"
   weeklyVisits: number;
   monthlyVisits: number;
   avgUsageTime: string; // e.g., "4m 32s"
@@ -71,7 +72,6 @@ export interface SocialLinks {
   telegram: string;
   linkedin: string;
   instagram: string;
-  twitter: string;
   email: string;
   portfolio: string;
 }

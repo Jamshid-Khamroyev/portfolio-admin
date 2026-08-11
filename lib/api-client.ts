@@ -2,7 +2,7 @@ import axios, { AxiosInstance } from 'axios';
 
 // Create configured Axios instance
 const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+  baseURL: process.env.NEXT_PUBLIC_SITE_URL,
   withCredentials: true,
 });
 
@@ -113,7 +113,7 @@ export const chatsApi = {
 
 export const reviewApi = {
   getAnalytics: async () => {
-    const res = await apiClient.get('/api/review');
+    const res = await apiClient.get('/api/stats');
     return res.data;
   },
   sendAnalytics: async (data: any) => {

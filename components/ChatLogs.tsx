@@ -1,48 +1,37 @@
-'use client';
-
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, RefreshCw, Bot, User, Send, Globe, Linkedin, Calendar, Mail } from 'lucide-react';
+import { MessageSquare, RefreshCw, Bot, User } from 'lucide-react';
 import { ChatMessage } from '@/lib/data-store';
-import { chatsApi } from '@/lib/api-client';
 import { useToast } from './Toast';
+import { uz } from 'date-fns/locale';
+import { format } from 'date-fns';
+import apiClient from '@/lib/api-client';
 
 export const ChatLogs: React.FC = () => {
   const [chats, setChats] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [period, setPeriod] = useState<
+    'day' | 'week' | 'month' | 'year' | 'last_week' | 'last_month'
+  >('week');
   const { showToast } = useToast();
 
-  const fetchChats = async () => {
+  const fetchChats = async (signal?: AbortSignal) => {
     setLoading(true);
     try {
-      const data = await chatsApi.getAll();
+      const { data } = await apiClient.get(`/api/chats?period=${encodeURIComponent(period)}`);
       setChats(data);
     } catch (err: any) {
-      showToast('Chatlarni yuklashda xatolik', 'error', err.message);
+      showToast('Chatlarni yuklashda xatolik', 'error', err?.message ?? String(err));
+      setChats([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    let ignore = false;
-    chatsApi.getAll()
-      .then((data) => {
-        if (!ignore) {
-          setChats(data);
-          setLoading(false);
-        }
-      })
-      .catch((err: any) => {
-        if (!ignore) {
-          showToast('Chatlarni yuklashda xatolik', 'error', err.message);
-          setLoading(false);
-        }
-      });
-    return () => {
-      ignore = true;
-    };
-  }, [showToast]);
-
+    const controller = new AbortController();
+    fetchChats(controller.signal);
+    return () => controller.abort();
+  }, [period, showToast]);
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -61,13 +50,33 @@ export const ChatLogs: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={fetchChats}
-          className="px-3.5 py-1.5 rounded-sm bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] hover:bg-[#1f8a52] hover:text-[#eaf2ec] text-xs font-mono font-semibold transition-colors flex items-center gap-2"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Yangilash</span>
-        </button>
+        <div className="flex items-center gap-3">
+          <label className="text-xs text-[#aab8b0] mr-2">Period:</label>
+          <select
+            value={period}
+            onChange={(e) =>
+              setPeriod(
+                e.target.value as 'day' | 'week' | 'month' | 'year' | 'last_week' | 'last_month'
+              )
+            }
+            className="bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] py-1 px-2 text-xs rounded-sm"
+          >
+            <option value="day">Oxirgi 24 soat (day)</option>
+            <option value="week">Oxirgi 7 kun (week)</option>
+            <option value="month">Oxirgi 30 kun (month)</option>
+            <option value="year">Oxirgi yil (year)</option>
+            <option value="last_week">O'tgan to'liq hafta (last_week)</option>
+            <option value="last_month">O'tgan to'liq oy (last_month)</option>
+          </select>
+
+          <button
+            onClick={() => fetchChats()}
+            className="px-3.5 py-1.5 rounded-sm bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] hover:bg-[#1f8a52] hover:text-[#eaf2ec] text-xs font-mono font-semibold transition-colors flex items-center gap-2"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            <span>Yangilash</span>
+          </button>
+        </div>
       </div>
 
       {/* Messages & AI Responses */}
@@ -81,47 +90,44 @@ export const ChatLogs: React.FC = () => {
         <div className="p-12 text-center bg-[#0d1310] rounded-2xl border border-[#213028]">
           <MessageSquare className="w-12 h-12 text-[#71847a] mx-auto mb-3" />
           <h3 className="text-sm font-bold text-[#aab8b0]">Xabarlar topilmadi</h3>
-          <p className="text-xs text-[#71847a] mt-1">Hozircha tizimda muloqot xabarlari mavjud emas.</p>
+          <p className="text-xs text-[#71847a] mt-1">Tanlangan period uchun muloqot xabarlari mavjud emas.</p>
         </div>
       ) : (
         <div className="space-y-6">
           {chats.map((chat) => {
-            const answer =
-              chat.answer ||
-              "AI yordamchisi tomonidan xabar qabul qilindi va tahlil qilindi.";
+            const answer = chat.answer || 'AI yordamchisi tomonidan xabar qabul qilindi va tahlil qilindi.';
 
-            const createdAt = new Date(chat.createdAt).toLocaleString("uz-UZ");
+            // Ensure we don't mutate the original date by creating a new Date instance
+            const createdAt = format(new Date(chat.createdAt), 'd MMMM yyyy, HH:mm', { locale: uz });
 
             return (
-              <div key={chat.id} className="space-y-3 pt-1">
-                {/* User message */}
-                <div className="space-y-1.5 border border-[#213028] bg-[#131b16] p-2">
-                  <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#eaf2ec]">
-                    <User className="h-3.5 w-3.5 text-[#49f08a]" />
-                    <span>Foydalanuvchi xabari:</span>
+              <div key={chat.id} className="rounded-sm border border-[#26352c] bg-[#151d18] p-4">
+                <div className="grid grid-cols-2 gap-6">
+                  {/* User question */}
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <User className="h-4 w-4 text-[#49f08a]" />
+                      <span className="text-xs font-medium text-[#8fa99a]">Foydalanuvchi</span>
+                    </div>
+
+                    <p className="text-sm leading-6 text-[#eaf2ec]">{chat.content}</p>
                   </div>
 
-                  <p className="text-xs font-sans leading-relaxed text-[#aab8b0]">
-                    {chat.content}
-                  </p>
-                </div>
+                  {/* AI answer */}
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-[#49f08a]" />
+                      <span className="text-xs font-medium text-[#49f08a]">AI yordamchi</span>
+                    </div>
 
-                {/* AI response */}
-                <div className="space-y-1.5 border border-[#1f8a52]/40 bg-[#182119]/80 p-2">
-                  <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#49f08a]">
-                    <Bot className="h-3.5 w-3.5" />
-                    <span>AI javobi (Google Gemini):</span>
+                    <p className="text-sm leading-6 text-[#d8e3dc]">{answer}</p>
                   </div>
-
-                  <p className="text-xs font-sans leading-relaxed text-[#eaf2ec]">
-                    {answer}
-                  </p>
                 </div>
 
                 {/* Timestamp */}
-                <p className="text-end text-xs text-[#71847a]">
-                  {createdAt}
-                </p>
+                <div className="border-t border-[#26352c] p-1 m-1 text-right">
+                  <span className="text-[11px] text-[#71847a]">{createdAt}</span>
+                </div>
               </div>
             );
           })}

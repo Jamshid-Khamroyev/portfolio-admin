@@ -29,53 +29,21 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { reviewApi, socialsApi } from '@/lib/api-client';
+import apiClient, { reviewApi, socialsApi } from '@/lib/api-client';
 import { UsageStats, SocialLinks } from '@/lib/data-store';
 import { SocialsModal } from './SocialsModal';
 
 const DEFAULT_SOCIALS: SocialLinks = {
-  github: "https://github.com/xamroyevjamshid",
-  telegram: "https://t.me/xamroyev_jamshid",
-  linkedin: "https://linkedin.com/in/xamroyev-jamshid",
-  instagram: "https://instagram.com/xamroyev.dev",
-  twitter: "https://x.com/xamroyev_dev",
+  github: "https://github.com/Jamshid-Khamroyev",
+  telegram: "https://t.me/xamroyev0811",
+  linkedin: "www.linkedin.com/in/jamshid-xamroyev-5b108a370",
+  instagram: "https://www.instagram.com/jamsh1d0811",
   email: "xamroyevjamshid46@gmail.com",
   portfolio: "https://portfolio-wkv9.vercel.app",
 };
 
-const DEFAULT_STATS: UsageStats = {
-  totalVisits: 2840,
-  weeklyVisits: 640,
-  monthlyVisits: 2840,
-  avgUsageTime: "5m 12s",
-  webUsersCount: 1950,
-  tmeUsersCount: 890,
-  totalUsersCount: 2840,
-  topTasks: [
-    { task: "Next.js va AI loyihalarni ko'rish", count: 1240, percentage: 44 },
-    { task: "Blog maqolalarini o'qish", count: 850, percentage: 30 },
-    { task: "Chat orqali AI savol berish", count: 520, percentage: 18 },
-    { task: "Ijtimoiy tarmoqlarga o'tish", count: 230, percentage: 8 },
-  ],
-  weeklyChart: [
-    { day: "Dush", web: 120, tme: 40, total: 160, durationHours: 4.2 },
-    { day: "Sesh", web: 150, tme: 60, total: 210, durationHours: 5.1 },
-    { day: "Chor", web: 180, tme: 70, total: 250, durationHours: 6.0 },
-    { day: "Pay", web: 140, tme: 50, total: 190, durationHours: 4.8 },
-    { day: "Jum", web: 200, tme: 90, total: 290, durationHours: 7.2 },
-    { day: "Shan", web: 220, tme: 110, total: 330, durationHours: 8.0 },
-    { day: "Yak", web: 170, tme: 80, total: 250, durationHours: 5.8 },
-  ],
-  monthlyChart: [
-    { month: "Moy", web: 3200, tme: 1100, total: 4300, durationHours: 120 },
-    { month: "Iyun", web: 3800, tme: 1400, total: 5200, durationHours: 145 },
-    { month: "Iyul", web: 4500, tme: 1800, total: 6300, durationHours: 180 },
-    { month: "Avg", web: 4100, tme: 1600, total: 5700, durationHours: 160 },
-  ],
-};
-
 export const UsageDashboard: React.FC = () => {
-  const [stats, setStats] = useState<UsageStats>(DEFAULT_STATS);
+  const [stats, setStats] = useState<UsageStats>();
   const [socials, setSocials] = useState<SocialLinks>(DEFAULT_SOCIALS);
   const [loading, setLoading] = useState<boolean>(true);
   const [chartMode, setChartMode] = useState<'weekly' | 'monthly'>('weekly');
@@ -107,6 +75,8 @@ export const UsageDashboard: React.FC = () => {
       ignore = true;
     };
   }, []);
+
+
 
   if (loading || !stats) {
     return (
@@ -200,7 +170,7 @@ export const UsageDashboard: React.FC = () => {
             </div>
           </div>
           <div className="text-2xl font-bold text-[#49f08a] font-mono tracking-tight">
-            184 soat 45m
+            {stats.totalUsageTime}
           </div>
           <div className="mt-2 text-[11px] text-[#aab8b0] font-mono flex items-center gap-1">
             <span>O&apos;rtacha sessiya: {stats.avgUsageTime}</span>
@@ -260,13 +230,13 @@ export const UsageDashboard: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-[#eaf2ec] flex items-center gap-2">
-                <span>{chartMetric === 'traffic' ? 'Kirishlar Oqimi Statistikasi' : 'Foydalanish Vaqti Statistikasi (Soatda)'}</span>
-                <span className="text-[#49f08a] font-mono text-xs">{`{Grafik}`}</span>
+                <span>{chartMetric === 'traffic' ? 'Kirishlar Oqimi' : 'Foydalanish Vaqti'}</span>
+                <span className="text-[#49f08a] font-mono text-xs">{`{Statistikasi}`}</span>
               </h3>
               <p className="text-xs text-[#aab8b0] mt-0.5">
                 {chartMetric === 'traffic'
                   ? 'Web va Telegram platformalari bo\'yicha kirishlar grafigi'
-                  : 'Foydalanuvchilar tomonidan platformada o\'tkazilgan umumiy vaqt (soat)'}
+                  : 'Foydalanuvchilar umumiy foydalanish vaqti'}
               </p>
             </div>
 
@@ -416,7 +386,7 @@ export const UsageDashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
           <a
-            href={socials?.github || "https://github.com/xamroyevjamshid"}
+            href={socials?.github}
             target="_blank"
             rel="noreferrer"
             className="p-3.5 rounded-xl bg-[#080b09] border border-[#213028] hover:border-[#1f8a52]/60 flex items-center justify-between text-xs font-mono group transition-all"
@@ -429,7 +399,7 @@ export const UsageDashboard: React.FC = () => {
           </a>
 
           <a
-            href={socials?.telegram || "https://t.me/xamroyev_jamshid"}
+            href={socials?.telegram}
             target="_blank"
             rel="noreferrer"
             className="p-3.5 rounded-xl bg-[#080b09] border border-[#213028] hover:border-[#1f8a52]/60 flex items-center justify-between text-xs font-mono group transition-all"
@@ -442,7 +412,7 @@ export const UsageDashboard: React.FC = () => {
           </a>
 
           <a
-            href={socials?.linkedin || "https://linkedin.com/in/xamroyev-jamshid"}
+            href={socials?.linkedin}
             target="_blank"
             rel="noreferrer"
             className="p-3.5 rounded-xl bg-[#080b09] border border-[#213028] hover:border-[#1f8a52]/60 flex items-center justify-between text-xs font-mono group transition-all"
@@ -455,7 +425,7 @@ export const UsageDashboard: React.FC = () => {
           </a>
 
           <a
-            href={socials?.instagram || "https://instagram.com/xamroyev.dev"}
+            href={socials?.instagram}
             target="_blank"
             rel="noreferrer"
             className="p-3.5 rounded-xl bg-[#080b09] border border-[#213028] hover:border-[#1f8a52]/60 flex items-center justify-between text-xs font-mono group transition-all"
@@ -463,19 +433,6 @@ export const UsageDashboard: React.FC = () => {
             <div className="flex items-center gap-2.5 text-[#aab8b0] group-hover:text-[#49f08a]">
               <Instagram className="w-4 h-4 text-[#49f08a]" />
               <span className="truncate">Instagram</span>
-            </div>
-            <ExternalLink className="w-3.5 h-3.5 text-[#71847a] group-hover:text-[#49f08a] shrink-0" />
-          </a>
-
-          <a
-            href={socials?.twitter || "https://x.com/xamroyev_dev"}
-            target="_blank"
-            rel="noreferrer"
-            className="p-3.5 rounded-xl bg-[#080b09] border border-[#213028] hover:border-[#1f8a52]/60 flex items-center justify-between text-xs font-mono group transition-all"
-          >
-            <div className="flex items-center gap-2.5 text-[#aab8b0] group-hover:text-[#49f08a]">
-              <Twitter className="w-4 h-4 text-[#49f08a]" />
-              <span className="truncate">Twitter / X</span>
             </div>
             <ExternalLink className="w-3.5 h-3.5 text-[#71847a] group-hover:text-[#49f08a] shrink-0" />
           </a>
