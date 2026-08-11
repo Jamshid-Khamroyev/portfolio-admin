@@ -1,0 +1,6 @@
+{
+  "name": "Portfolio Admin Panel",
+  "description": "Dark green portfolio styled admin panel with dashboard analytics, blog & project CRUD, chat logs, and Gemini AI insights.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

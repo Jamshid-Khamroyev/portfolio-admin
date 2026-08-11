@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-0: #080b09;
+  --color-bg-1: #0d1310;
+  --color-bg-2: #131b16;
+  --color-bg-3: #182119;
+  --color-line: #213028;
+  --color-line-soft: #182119;
+  --color-text-0: #eaf2ec;
+  --color-text-1: #aab8b0;
+  --color-text-2: #71847a;
+  --color-accent: #49f08a;
+  --color-accent-dim: #1f8a52;
+  --color-accent-glow: rgba(73, 240, 138, 0.18);
+  --color-danger: #ff6b6b;
+}
+
+@layer base {
+  :root {
+    --background: #080b09;
+    --foreground: #eaf2ec;
+  }
+}
+
+body {
+  background-color: #080b09;
+  color: #eaf2ec;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0b1120;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #10b981;
+}
+
+/* Glow Utilities */
+.glow-emerald {
+  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.25);
+}
+
+.glow-emerald-sm {
+  box-shadow: 0 0 12px -2px rgba(16, 185, 129, 0.2);
+}
+
+.glow-border {
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.15);
+}
+
+/* Code highlight brackets */
+.code-bracket {
+  color: #10b981;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Custom animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.99); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 4s ease-in-out infinite;
+}
