@@ -16,8 +16,10 @@ import {
 import { BlogPost } from '@/lib/data-store';
 import { blogApi } from '@/lib/api-client';
 import { useToast } from './Toast';
+import type { JSONContent } from "@tiptap/react"
 import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
+import RichTextEditor from './shared/RichTextEditor';
 
 export const BlogManager: React.FC = () => {
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -34,13 +36,13 @@ export const BlogManager: React.FC = () => {
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
-    content: string;
+    content: JSONContent;
     image: File | string | null;
     isPrivate: boolean;
   }>({
     title: '',
     description: '',
-    content: '',
+    content: { type: 'doc', content: [] } as JSONContent,
     image: null,
     isPrivate: false,
   });
@@ -83,7 +85,7 @@ export const BlogManager: React.FC = () => {
   const handleOpenNewModal = () => {
     revokeObjectUrl();
     setEditingBlog(null);
-    setFormData({ title: '', description: '', content: '', image: null, isPrivate: false });
+    setFormData({ title: '', description: '', content: { type: 'doc', content: [] } as JSONContent, image: null, isPrivate: false });
     setImagePreview('');
     setIsModalOpen(true);
   };
@@ -116,24 +118,50 @@ export const BlogManager: React.FC = () => {
     }
   };
 
-  const buildUpdatePayload = () => {
-    if (!editingBlog) return null;
-    const currentTitle = (editingBlog as any).title_uz ?? editingBlog.title ?? '';
-    const currentDesc = (editingBlog as any).description_uz ?? editingBlog.description ?? '';
-    const currentContent = (editingBlog as any).content_uz ?? editingBlog.content ?? '';
-    const payloadEntries: Record<string, any> = {};
-    if (formData.title.trim() && formData.title.trim() !== currentTitle) payloadEntries.title = formData.title.trim();
-    if (formData.description.trim() && formData.description.trim() !== currentDesc) payloadEntries.description = formData.description.trim();
-    if (formData.content.trim() && formData.content.trim() !== currentContent) payloadEntries.content = formData.content.trim();
-    payloadEntries.visible = formData.isPrivate ? 'PRIVATE' : 'PUBLIC';
-    if (formData.image instanceof File) {
-      const fd = new FormData();
-      Object.entries(payloadEntries).forEach(([k, v]) => fd.append(k, v));
-      fd.append('image', formData.image);
-      return fd;
+  const isContentEmpty = (content: JSONContent | null | undefined) => {
+      if (!content?.content?.length) return true
+      return !content.content[0].content?.[0]?.text?.trim()
     }
-    return Object.keys(payloadEntries).length ? payloadEntries : null;
-  };
+
+  const buildUpdatePayload = () => {
+    const payload = new FormData()
+
+    let changed = false
+
+    if (formData.title !== editingBlog?.title) {
+      payload.append("title", formData.title)
+      changed = true
+    }
+
+    if (formData.description !== editingBlog?.description) {
+      payload.append("description", formData.description)
+      changed = true
+    }
+
+    if (
+      JSON.stringify(formData.content) !==
+      JSON.stringify(editingBlog?.content)
+    ) {
+      if (!isContentEmpty(formData.content)) {
+        payload.append("content", JSON.stringify(formData.content))
+        changed = true
+      }
+    }
+
+    if (formData.image instanceof File) {
+      payload.append("image", formData.image)
+      changed = true
+    }
+
+    const visible = formData.isPrivate ? "PRIVATE" : "PUBLIC"
+
+    if (visible !== editingBlog?.visible) {
+      payload.append("visible", visible)
+      changed = true
+    }
+
+    return changed ? payload : null
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,7 +206,7 @@ export const BlogManager: React.FC = () => {
             ...(srv),
             title: formData.title ||  editingBlog.title,
             description: formData.description || (editingBlog as any).description || '',
-            content: formData.content || (editingBlog as any).content || '',
+            content: formData.content || (editingBlog as any).content || { type: 'doc', content: [] } as JSONContent,
             updatedAt: srv.updatedAt || new Date().toISOString(),
           } as any;
           setBlogs((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
@@ -188,7 +216,7 @@ export const BlogManager: React.FC = () => {
             const fd = new FormData();
             fd.append('title', formData.title);
             fd.append('description', formData.description);
-            fd.append('content', formData.content);
+            fd.append('content', JSON.stringify(formData.content));
             fd.append('visible', 'PUBLIC');
             fd.append('image', formData.image);
             const res = await blogApi.create(fd);
@@ -233,6 +261,7 @@ export const BlogManager: React.FC = () => {
       setIsModalOpen(false);
       revokeObjectUrl();
     } catch (err: any) {
+      console.log(err);
       showToast('Saqlashda xatolik', 'error', err.message);
     } finally {
       setSubmitting(false);
@@ -367,8 +396,19 @@ export const BlogManager: React.FC = () => {
               </div>
 
               <div>
-                <label className="text-xs font-mono text-[#aab8b0] block mb-1">Kontent (Content)</label>
-                <textarea rows={6} placeholder="Blog maqolasi matni va kontenti..." value={formData.content} onChange={(e) => setFormData({ ...formData, content: e.target.value })} className="w-full px-3.5 py-2 bg-[#131b16] border border-[#213028] rounded-lg text-sm text-[#eaf2ec] focus:outline-none focus:border-[#49f08a]/60 font-mono" />
+                <label className="text-xs font-mono text-[#aab8b0] block mb-1">
+                  Kontent (Content)
+                </label>
+
+                <RichTextEditor
+                  value={formData.content}
+                  onChange={(content) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      content,
+                    }))
+                  }
+                />
               </div>
 
               {!formData.isPrivate ? (

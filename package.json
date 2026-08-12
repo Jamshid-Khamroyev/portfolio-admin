@@ -12,6 +12,9 @@
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@hookform/resolvers": "^5.2.1",
+    "@tiptap/pm": "^3.30.0",
+    "@tiptap/react": "^3.30.0",
+    "@tiptap/starter-kit": "^3.30.0",
     "autoprefixer": "^10.4.21",
     "axios": "^1.19.0",
     "class-variance-authority": "^0.7.1",
