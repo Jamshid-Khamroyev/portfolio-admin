@@ -349,7 +349,7 @@ export const ProjectManager: React.FC = () => {
 
               <div>
                 <label className="text-xs font-mono text-[#aab8b0] block mb-1">Qisqa Izoh (Description)</label>
-                <textarea rows={2} placeholder="Loyiha vazifasi va asosiy afzalliklari..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3.5 py-2 bg-[#131b16] border border-[#213028] rounded-lg text-sm text-[#eaf2ec] focus:outline-none focus:border-[#49f08a]/60 font-sans" />
+                <textarea rows={5} placeholder="Loyiha vazifasi va asosiy afzalliklari..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3.5 py-2 bg-[#131b16] border border-[#213028] rounded-lg text-sm text-[#eaf2ec] focus:outline-none focus:border-[#49f08a]/60 font-sans" />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
