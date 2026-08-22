@@ -18,7 +18,7 @@ export const ChatLogs: React.FC = () => {
     setLoading(true);
     try {
       const { data } = await apiClient.get(`/api/chats?period=${encodeURIComponent(period)}`);
-      setChats(data);
+      setChats(data.reverse());
     } catch (err: any) {
       showToast('Chatlarni yuklashda xatolik', 'error', err?.message ?? String(err));
       setChats([]);
