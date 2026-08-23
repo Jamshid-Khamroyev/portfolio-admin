@@ -172,7 +172,13 @@ export const BlogManager: React.FC = () => {
     setSubmitting(true);
     try {
       if (formData.isPrivate) {
-        const privatePayload = { title: formData.title, description: formData.description, content: formData.content, visible: 'PRIVATE' };
+       const privatePayload = new FormData();
+
+        privatePayload.append("title", formData.title);
+        privatePayload.append("description", formData.description);
+        privatePayload.append("content", JSON.stringify(formData.content));
+        privatePayload.append("visible", "PRIVATE");
+
         const res = await blogApi.createPrivate(privatePayload);
         const srv = res?.blog || res || {};
         const newPrivateBlog: BlogPost = {
@@ -326,7 +332,7 @@ export const BlogManager: React.FC = () => {
               <div key={blog.id} className="bg-gradient-to-b from-[#07120f] to-[#071219] border border-[#2b3a33] rounded-sm overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-shadow duration-300">
                 <div>
                   <div className="relative h-44 w-full bg-[#131b16] overflow-hidden">
-                    <img src={blog.coverImage || imagePreview || 'https://unsplash.com/photos/a-golden-padlock-sitting-on-top-of-a-keyboard-FnA5pAzqhMM'} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={blog.coverImage || imagePreview || 'https://images.unsplash.com/photo-1633265486064-086b219458ec?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#071217]/80 via-transparent to-black/30" />
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-[#0b1b15]/90 border border-[#274b3c] text-[10px] font-mono font-semibold text-[#ffd8a8] flex items-center gap-2">
                       <Globe2 className="w-3 h-3 text-[#ffd8a8]" />
