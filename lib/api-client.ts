@@ -120,6 +120,10 @@ export const reviewApi = {
     const res = await apiClient.post('/api/review', data);
     return res.data;
   },
+  getVisitors: async (page = 1, limit = 20) => {
+    const res = await apiClient.get('/api/visitors', { params: { page, limit } });
+    return res.data;
+  },
 };
 
 export const socialsApi = {

@@ -11,13 +11,13 @@ import {
   Github,
   Linkedin,
   Instagram,
-  Twitter,
   Mail,
   TrendingUp,
   BarChart3,
   ExternalLink,
   Timer,
 } from 'lucide-react';
+import { VisitorsTable } from '@/components/VisitorsTable';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -370,7 +370,12 @@ export const UsageDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 4. Social Links Section */}
+      {/* 4. Visitors Table */}
+      <div className="rounded-2xl bg-[#0d1310] border border-[#213028] shadow-xl">
+        <VisitorsTable />
+      </div>
+
+      {/* 5. Social Links Section */}
       <div className="p-6 rounded-2xl bg-[#0d1310] border border-[#213028] shadow-xl space-y-4">
         <div className="flex items-center justify-between">
           <div>
