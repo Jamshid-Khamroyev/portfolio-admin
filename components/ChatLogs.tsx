@@ -29,6 +29,7 @@ export const ChatLogs: React.FC = () => {
 
   useEffect(() => {
     const controller = new AbortController();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchChats(controller.signal);
     return () => controller.abort();
   }, [period, showToast]);
@@ -65,8 +66,8 @@ export const ChatLogs: React.FC = () => {
             <option value="week">Oxirgi 7 kun (week)</option>
             <option value="month">Oxirgi 30 kun (month)</option>
             <option value="year">Oxirgi yil (year)</option>
-            <option value="last_week">O'tgan to'liq hafta (last_week)</option>
-            <option value="last_month">O'tgan to'liq oy (last_month)</option>
+            <option value="last_week">O&apos;tgan to&apos;liq hafta (last_week)</option>
+            <option value="last_month">O&apos;tgan to&apos;liq oy (last_month)</option>
           </select>
 
           <button

@@ -210,6 +210,7 @@ export const VisitorsTable: React.FC = () => {
     }
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(page); }, [page, load]);
 
   const totalPages = Math.max(1, Math.ceil(total / limit));

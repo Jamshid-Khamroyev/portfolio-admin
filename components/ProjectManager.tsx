@@ -319,8 +319,8 @@ export const ProjectManager: React.FC = () => {
         <div className="p-12 text-center bg-[#071217] rounded-sm border border-[#213028]">
           <Layers className="w-12 h-12 text-[#7baea6] mx-auto mb-3" />
           <h3 className="text-sm font-bold text-[#cfe9dd]">Loyiha topilmadi</h3>
-          <p className="text-xs text-[#9fbfaf] mt-1">Yangi loyiha qo'shishni boshlang.</p>
-          <button onClick={handleOpenNewModal} className="mt-4 px-4 py-2 rounded-xl bg-[#0ea5a4] text-[#02201f] font-semibold">+ Qo'shish</button>
+          <p className="text-xs text-[#9fbfaf] mt-1">Yangi loyiha qo&apos;shishni boshlang.</p>
+          <button onClick={handleOpenNewModal} className="mt-4 px-4 py-2 rounded-xl bg-[#0ea5a4] text-[#02201f] font-semibold">+ Qo&apos;shish</button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

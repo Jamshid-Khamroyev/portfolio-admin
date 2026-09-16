@@ -292,7 +292,7 @@ export const BlogManager: React.FC = () => {
               <span>Blog Boshqaruvi</span>
               <span className="text-xs text-[#ffbf59] font-mono">{`(${blogs.length} ta)`}</span>
             </h2>
-            <p className="text-xs text-[#cfe9dd]">Yangi maqolalar chop etish, yangilash va o'chirish — tez va chiroyli.</p>
+            <p className="text-xs text-[#cfe9dd]">Yangi maqolalar chop etish, yangilash va o&apos;chirish — tez va chiroyli.</p>
           </div>
         </div>
 
