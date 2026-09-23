@@ -6,15 +6,62 @@ const apiClient: AxiosInstance = axios.create({
   withCredentials: true,
 });
 
-// Response interceptor for seamless error handling
+/** Server javobi bo'lmaganda holat kodiga mos tushuntirish */
+const STATUS_FALLBACK: Record<number, string> = {
+  400: "Yuborilgan ma'lumotda xatolik bor.",
+  401: 'Sessiya tugagan. Qaytadan kiring.',
+  403: "Bu amal uchun ruxsat yo'q.",
+  404: "So'ralgan ma'lumot topilmadi.",
+  409: "Bunday yozuv allaqachon mavjud.",
+  413: "Ma'lumot hajmi juda katta.",
+  429: "So'rovlar juda tez yuborildi. Biroz kutib turing.",
+  500: 'Serverda ichki xatolik yuz berdi.',
+  502: "Tashqi xizmat javob bermadi. Qaytadan urinib ko'ring.",
+  503: 'Server vaqtincha ishlamayapti.',
+  504: 'Server javobni kutib ololmadi.',
+};
+
+export interface ApiError extends Error {
+  status?: number;
+  code?: string;
+  details?: Record<string, unknown>;
+}
+
+/*
+  Server xatoliklari `{ message, error, code, details }` shaklida keladi.
+  Avval faqat `message` o'qilardi, backend esa `error` yuborardi —
+  shuning uchun foydalanuvchi har doim umumiy matnni ko'rardi.
+*/
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const status: number | undefined = error.response?.status;
+    const data = error.response?.data;
+
+    const serverMessage =
+      typeof data === 'string'
+        ? data
+        : data?.message || data?.error || data?.details?.message;
+
+    const offline =
+      typeof navigator !== 'undefined' && navigator.onLine === false;
+
     const message =
-      error.response?.data?.message ||
+      serverMessage ||
+      (offline ? "Internet aloqasi yo'q." : undefined) ||
+      (status ? STATUS_FALLBACK[status] : undefined) ||
+      (error.code === 'ECONNABORTED'
+        ? 'Server javob bermadi (vaqt tugadi).'
+        : undefined) ||
       error.message ||
       'Tarmoq operatsiyasida xatolik yuz berdi';
-    return Promise.reject(new Error(message));
+
+    const apiError: ApiError = new Error(message);
+    apiError.status = status;
+    apiError.code = data?.code;
+    apiError.details = data?.details;
+
+    return Promise.reject(apiError);
   }
 );
 
@@ -105,8 +152,16 @@ export const projectApi = {
 };
 
 export const chatsApi = {
-  getAll: async () => {
-    const res = await apiClient.get('/api/chats');
+  getAll: async (params?: { period?: string; status?: string; limit?: number }) => {
+    const res = await apiClient.get('/api/chats', { params });
+    return res.data;
+  },
+
+  /** olderThan: day | week | month | year | all */
+  clear: async (olderThan: string) => {
+    const res = await apiClient.delete('/api/chats', {
+      params: { older_than: olderThan },
+    });
     return res.data;
   },
 };
