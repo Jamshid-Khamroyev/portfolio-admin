@@ -56,7 +56,17 @@ apiClient.interceptors.response.use(
       error.message ||
       'Tarmoq operatsiyasida xatolik yuz berdi';
 
-    const apiError: ApiError = new Error(message);
+    /*
+      Backend ba'zi xatoliklarda `details.debug` bilan aniq tashxis
+      matnini ham yuboradi (qarang: main/lib/api-response.ts, exposeDebug).
+      Shu matnni asosiy xabarga qo'shib ko'rsatamiz — "qayerda xato
+      bo'layotgani" darhol ko'rinsin uchun, har bir joyda alohida
+      o'qishning hojati yo'q.
+    */
+    const debug = data?.details?.debug;
+    const fullMessage = debug && debug !== message ? `${message} — ${debug}` : message;
+
+    const apiError: ApiError = new Error(fullMessage);
     apiError.status = status;
     apiError.code = data?.code;
     apiError.details = data?.details;
