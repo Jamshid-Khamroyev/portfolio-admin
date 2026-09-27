@@ -5,6 +5,7 @@ coverage/
 *.log
 .env*
 !.env.example
+!.env.docker.example
 
 # build cache
 tsconfig.tsbuildinfo

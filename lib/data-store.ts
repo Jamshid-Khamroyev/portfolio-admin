@@ -9,6 +9,23 @@ export interface BlogPost {
   description: string;
   createdAt: string;
   updatedAt: string;
+  /** Jami ko'rishlar soni — /api/blog admin so'rovida qaytadi */
+  views?: number;
+  /** Yodlab qolinadigan qisqa raqam (1001, 1006...) — /api/blog admin so'rovida qaytadi */
+  blogNumber?: number;
+}
+
+export interface BlogViewSourceStat {
+  source: string;
+  count: number;
+  updatedAt: string;
+}
+
+export interface BlogViewStats {
+  id: string;
+  slug: string;
+  views: number;
+  sources: BlogViewSourceStat[];
 }
 
 export interface Project {

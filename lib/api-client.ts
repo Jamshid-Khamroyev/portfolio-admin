@@ -85,7 +85,7 @@ export const authApi = {
 
 export const blogApi = {
   getAll: async (lang?: string) => {
-    const res = await apiClient.get("/api/blog", { params: { lang } });
+    const res = await apiClient.get("/api/blog", { params: { lang, scope: "admin" } });
     return res.data;
   },
   getBySlug: async (slug: string) => {
@@ -116,6 +116,10 @@ export const blogApi = {
   },
   delete: async (id: string) => {
     const res = await apiClient.delete(`/api/blog/${id}`);
+    return res.data;
+  },
+  getStats: async (id: string) => {
+    const res = await apiClient.get(`/api/blog/${id}/stats`);
     return res.data;
   },
 };

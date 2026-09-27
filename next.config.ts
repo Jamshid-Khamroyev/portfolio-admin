@@ -1,7 +1,14 @@
 import type {NextConfig} from 'next';
+import path from 'path';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  /* Next ba'zan tepadagi papkani (bo'sh `C:\Users\User\package-lock.json`)
+     workspace root deb aniqlab, noto'g'ri modul kesh yo'llarini
+     ishlatardi — root shu loyihaga qattiq bog'lab qo'yildi (main/da ham
+     xuddi shu muammo turbopack.root bilan tuzatilgan) */
+  outputFileTracingRoot: path.resolve(__dirname),
   eslint: {
     ignoreDuringBuilds: true,
   },

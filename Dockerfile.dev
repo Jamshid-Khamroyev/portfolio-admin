@@ -1,0 +1,17 @@
+# Faqat lokal rivojlantirish (development) uchun — production build Dockerfile'da.
+# Manba kodi docker-compose.dev.yml orqali bind-mount qilinadi.
+FROM node:20-alpine
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+COPY package.json package-lock.json* ./
+RUN npm ci
+
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+EXPOSE 3001
+
+CMD ["npm", "run", "dev"]

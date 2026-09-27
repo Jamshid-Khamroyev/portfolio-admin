@@ -12,8 +12,9 @@ import {
   Save,
   FileText,
   Globe2,
+  BarChart3,
 } from 'lucide-react';
-import { BlogPost } from '@/lib/data-store';
+import { BlogPost, BlogViewStats } from '@/lib/data-store';
 import { blogApi } from '@/lib/api-client';
 import { useToast } from './Toast';
 import type { JSONContent } from "@tiptap/react"
@@ -33,18 +34,55 @@ export const BlogManager: React.FC = () => {
   const imageObjectUrl = useRef<string | null>(null);
   const { showToast } = useToast();
 
+  const [statsBlog, setStatsBlog] = useState<BlogPost | null>(null);
+  const [statsData, setStatsData] = useState<BlogViewStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState<boolean>(false);
+
+  const handleOpenStats = async (blog: BlogPost) => {
+    setStatsBlog(blog);
+    setStatsData(null);
+    setStatsLoading(true);
+    try {
+      const data: BlogViewStats = await blogApi.getStats(blog.id);
+      setStatsData(data);
+    } catch (err: any) {
+      showToast("Statistikani yuklashda xatolik", 'error', err.message);
+      setStatsBlog(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
+  /** Redis'dagi manba kodini o'qiladigan yorliqqa aylantiradi (lib/blogViews.ts bilan mos) */
+  const sourceLabel = (source: string): string => {
+    const known: Record<string, string> = {
+      direct: "To'g'ridan-to'g'ri havola",
+      internal: 'Sayt ichidan',
+      telegram: 'Telegram',
+      google: 'Google',
+      social: 'Ijtimoiy tarmoq',
+    };
+    if (known[source]) return known[source];
+    if (source.startsWith('referral:')) return source.slice('referral:'.length);
+    return source;
+  };
+
   const [formData, setFormData] = useState<{
     title: string;
     description: string;
     content: JSONContent;
     image: File | string | null;
     isPrivate: boolean;
+    postToTelegram: boolean;
+    postToLinkedIn: boolean;
   }>({
     title: '',
     description: '',
     content: { type: 'doc', content: [] } as JSONContent,
     image: null,
     isPrivate: false,
+    postToTelegram: true,
+    postToLinkedIn: true,
   });
 
   useEffect(() => {
@@ -85,7 +123,7 @@ export const BlogManager: React.FC = () => {
   const handleOpenNewModal = () => {
     revokeObjectUrl();
     setEditingBlog(null);
-    setFormData({ title: '', description: '', content: { type: 'doc', content: [] } as JSONContent, image: null, isPrivate: false });
+    setFormData({ title: '', description: '', content: { type: 'doc', content: [] } as JSONContent, image: null, isPrivate: false, postToTelegram: true, postToLinkedIn: true });
     setImagePreview('');
     setIsModalOpen(true);
   };
@@ -99,6 +137,8 @@ export const BlogManager: React.FC = () => {
       image: blog.coverImage || null,
       description: (blog as any).description_uz || blog.description || '',
       isPrivate: blog.visible === 'PRIVATE',
+      postToTelegram: true,
+      postToLinkedIn: true,
     });
     setImagePreview(blog.coverImage || '');
     setIsModalOpen(true);
@@ -225,6 +265,8 @@ export const BlogManager: React.FC = () => {
             fd.append('content', JSON.stringify(formData.content));
             fd.append('visible', 'PUBLIC');
             fd.append('image', formData.image);
+            fd.append('postToTelegram', String(formData.postToTelegram));
+            fd.append('postToLinkedIn', String(formData.postToLinkedIn));
             const res = await blogApi.create(fd);
             const srv = res?.blog || res || {};
             const newBlog: BlogPost = {
@@ -246,6 +288,8 @@ export const BlogManager: React.FC = () => {
               content: formData.content,
               image: typeof formData.image === 'string' ? formData.image : undefined,
               visible: 'PUBLIC',
+              postToTelegram: formData.postToTelegram,
+              postToLinkedIn: formData.postToLinkedIn,
             };
             const res = await blogApi.create(payload);
             const srv = res?.blog || res || {};
@@ -349,6 +393,9 @@ export const BlogManager: React.FC = () => {
                   <div className="p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <h3 className="text-base font-bold text-[#f3fff7] line-clamp-1 truncate max-w-[70%]">{title}</h3>
+                      {typeof blog.blogNumber === 'number' && (
+                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-[#131b16] border border-[#213028] text-[10px] font-mono font-semibold text-[#49f08a]">#{blog.blogNumber}</span>
+                      )}
                     </div>
 
                     <p className="text-sm text-[#cfe4db] line-clamp-3">{desc || (blog as any).content_uz?.slice(0, 200) || (blog.content || '').slice(0, 200)}</p>
@@ -360,6 +407,14 @@ export const BlogManager: React.FC = () => {
                     <div>{created}</div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenStats(blog)}
+                      title="Ko'rishlar statistikasi"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#131b16] border border-[#213028] text-[#aab8b0] hover:text-[#49f08a] hover:border-[#1f8a52]/50 text-xs font-mono transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>{blog.views ?? 0}</span>
+                    </button>
                     <button onClick={() => openPublic((blog as any).slug)} className="px-3 py-1.5 rounded-lg bg-[#072b2f] border border-[#2ea7a8] text-[#c8fff7] hover:bg-[#0f5e61] text-xs font-semibold flex items-center gap-2 transition-colors">
                       <Globe2 className="w-4 h-4" />
                       Open
@@ -439,6 +494,19 @@ export const BlogManager: React.FC = () => {
                 <label htmlFor="isPrivate" className="text-xs text-[#eaf2ec] font-mono cursor-pointer flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#ff6b6b]" /><span>Maxfiy blog sifatida saqlash (visible: PRIVATE)</span></label>
               </div>
 
+              {!editingBlog && !formData.isPrivate && (
+                <div className="flex flex-wrap items-center gap-4 pt-1">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="postToTelegram" checked={formData.postToTelegram} onChange={(e) => setFormData({ ...formData, postToTelegram: e.target.checked })} className="w-4 h-4 rounded bg-[#131b16] border-[#213028] text-[#49f08a] focus:ring-[#49f08a]" />
+                    <label htmlFor="postToTelegram" className="text-xs text-[#eaf2ec] font-mono cursor-pointer">Telegram&apos;ga post qilish</label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" id="postToLinkedIn" checked={formData.postToLinkedIn} onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })} className="w-4 h-4 rounded bg-[#131b16] border-[#213028] text-[#49f08a] focus:ring-[#49f08a]" />
+                    <label htmlFor="postToLinkedIn" className="text-xs text-[#eaf2ec] font-mono cursor-pointer">LinkedIn&apos;ga post qilish</label>
+                  </div>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-[#213028] flex items-center justify-end gap-3">
                 <button type="button" onClick={() => { setIsModalOpen(false); revokeObjectUrl(); }} className="px-4 py-2 rounded-xl bg-[#131b16] text-[#aab8b0] hover:bg-[#182119] hover:text-[#eaf2ec] text-xs font-semibold transition-colors">Bekor qilish</button>
                 <button type="submit" disabled={submitting} className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#06b6d4] to-[#7dd3fc] text-[#02201f] font-bold text-xs flex items-center gap-2 shadow-lg transition-colors disabled:opacity-50">
@@ -447,6 +515,71 @@ export const BlogManager: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {statsBlog && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-[#0d1310] border border-[#213028] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl my-8">
+            <div className="p-5 border-b border-[#213028] flex items-center justify-between bg-[#080b09]">
+              <div className="flex items-center gap-2 text-[#49f08a] font-mono text-sm font-bold">
+                <BarChart3 className="w-4 h-4" />
+                <span>Ko&apos;rishlar statistikasi</span>
+              </div>
+              <button onClick={() => setStatsBlog(null)} className="p-1 text-[#aab8b0] hover:text-[#eaf2ec]"><X className="w-5 h-5" /></button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              <p className="text-sm text-[#cfe4db] line-clamp-1">
+                {(statsBlog as any).title_uz || statsBlog.title}
+              </p>
+
+              {statsLoading ? (
+                <div className="py-8 flex items-center justify-center">
+                  <span className="animate-spin rounded-full h-6 w-6 border-2 border-[#49f08a] border-t-transparent" />
+                </div>
+              ) : statsData ? (
+                <>
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-[#131b16] border border-[#213028]">
+                    <Eye className="w-6 h-6 text-[#49f08a]" />
+                    <div>
+                      <div className="text-2xl font-bold text-[#eaf2ec] font-mono leading-none">{statsData.views}</div>
+                      <div className="text-[11px] text-[#71847a] mt-1">jami ko&apos;rishlar</div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-mono text-[#71847a] uppercase tracking-widest mb-2">Qayerdan kirishdi</div>
+
+                    {statsData.sources.length === 0 ? (
+                      <p className="text-xs text-[#71847a]">Hali ma&apos;lumot yo&apos;q.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {statsData.sources.map((s) => {
+                          const percentage = statsData.views ? Math.round((s.count / statsData.views) * 100) : 0;
+                          return (
+                            <div key={s.source}>
+                              <div className="flex items-center justify-between text-xs mb-1">
+                                <span className="text-[#cfe4db] font-mono">{sourceLabel(s.source)}</span>
+                                <span className="text-[#aab8b0] font-mono">{s.count} ({percentage}%)</span>
+                              </div>
+                              <div className="h-1.5 rounded-full bg-[#131b16] overflow-hidden">
+                                <div className="h-full bg-[#49f08a]" style={{ width: `${percentage}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <p className="text-[10px] text-[#71847a] mt-4">
+                      Kesh orqali har 10 daqiqada yangilanadi — so&apos;nggi ko&apos;rishlar hali bu yerda bo&apos;lmasligi mumkin.
+                    </p>
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
         </div>
       )}

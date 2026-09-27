@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  NEXT_PUBLIC_SITE_URL: http://localhost:3000
+  NODE_ENV: production
+
+jobs:
+  build-and-smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Start server and smoke test
+        run: |
+          node .next/standalone/server.js &
+          SERVER_PID=$!
+
+          echo "Server javob berishini kutyapmiz..."
+          ok=false
+          for i in $(seq 1 30); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/)
+            if [ "$status" = "200" ]; then
+              ok=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ok" != "true" ]; then
+            echo "Server 30 soniyada 200 qaytarmadi!"
+            kill "$SERVER_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          echo "Admin login sahifasi ochildi (200 OK)."
+          kill "$SERVER_PID" 2>/dev/null || true
+        env:
+          PORT: 3001
+          HOSTNAME: 0.0.0.0
+
+  # Faqat build+smoke-test muvaffaqiyatli o'tsa VA main branchga push bo'lsa.
+  # Vercel'ning o'z git-integratsiyasi bo'lsa bu job kerak emas — sirlar
+  # (VERCEL_TOKEN va h.k.) qo'shilmagan bo'lsa o'zi jim o'tkazib yuboriladi.
+  deploy:
+    needs: build-and-smoke-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Skip if Vercel secrets are not configured
+        id: check
+        run: |
+          if [ -z "${{ secrets.VERCEL_TOKEN }}" ]; then
+            echo "VERCEL_TOKEN topilmadi — bu job o'tkazib yuboriladi."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install Vercel CLI
+        if: steps.check.outputs.skip == 'false'
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel (production)
+        if: steps.check.outputs.skip == 'false'
+        run: vercel deploy --prod --token="$VERCEL_TOKEN" --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
