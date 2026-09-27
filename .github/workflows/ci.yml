@@ -8,7 +8,10 @@ on:
 
 env:
   NEXT_PUBLIC_SITE_URL: http://localhost:3000
-  NODE_ENV: production
+  # Diqqat: NODE_ENV=production shu yerda GLOBAL qo'yilmaydi — `npm ci`
+  # buni ko'rsa devDependencies'ni (eslint va h.k.) o'tkazib yuboradi va
+  # "eslint: not found" bilan qulaydi. Faqat kerak bo'lgan qadamlarga
+  # (Build, smoke-test) alohida qo'yiladi.
 
 jobs:
   build-and-smoke-test:
@@ -32,6 +35,8 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          NODE_ENV: production
 
       - name: Start server and smoke test
         run: |
@@ -60,6 +65,7 @@ jobs:
         env:
           PORT: 3001
           HOSTNAME: 0.0.0.0
+          NODE_ENV: production
 
   # Faqat build+smoke-test muvaffaqiyatli o'tsa VA main branchga push bo'lsa.
   # Vercel'ning o'z git-integratsiyasi bo'lsa bu job kerak emas — sirlar
