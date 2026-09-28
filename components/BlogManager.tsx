@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BlogPost, BlogViewStats } from '@/lib/data-store';
 import { blogApi } from '@/lib/api-client';
+import { useBlogStore } from '@/hooks/useBlogStore';
 import { useToast } from './Toast';
 import type { JSONContent } from "@tiptap/react"
 import { format } from 'date-fns';
@@ -23,8 +24,8 @@ import { uz } from 'date-fns/locale';
 import RichTextEditor from './shared/RichTextEditor';
 
 export const BlogManager: React.FC = () => {
-  const [blogs, setBlogs] = useState<BlogPost[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const { blogs, loaded, setBlogs } = useBlogStore();
+  const [loading, setLoading] = useState<boolean>(!loaded);
   const [searchQuery] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
@@ -86,6 +87,12 @@ export const BlogManager: React.FC = () => {
   });
 
   useEffect(() => {
+    /* Avval yuklangan bo'lsa — qayta so'rov yubormaymiz, sahifaga qaytilganda darhol ko'rsatiladi */
+    if (loaded) {
+      setLoading(false);
+      return;
+    }
+
     let ignore = false;
     const loadBlogs = async () => {
       setLoading(true);
@@ -100,7 +107,7 @@ export const BlogManager: React.FC = () => {
     };
     loadBlogs();
     return () => { ignore = true; };
-  }, [searchQuery, showToast]);
+  }, [loaded, searchQuery, showToast, setBlogs]);
 
   const revokeObjectUrl = () => {
     if (imageObjectUrl.current) {
