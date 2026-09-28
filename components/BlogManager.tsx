@@ -258,44 +258,29 @@ export const BlogManager: React.FC = () => {
           setBlogs((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
           showToast('Blog yangilandi', 'success', `"${updated.title}" ma'lumotlari yangilandi`);
         } else {
-          if (formData.image instanceof File) {
+          {
+            /*
+              Har doim FormData — hatto rasm tanlanmagan holatda ham.
+              Avval rasm bo'lmasa oddiy JS obyekt yuborilardi, lekin
+              header "multipart/form-data" deb yolg'on ko'rsatilgani
+              uchun (axios buni JSON qilib jo'natadi) backend
+              `req.formData()` uni to'g'ri o'qiy olmasdi.
+            */
             const fd = new FormData();
             fd.append('title', formData.title);
             fd.append('description', formData.description);
             fd.append('content', JSON.stringify(formData.content));
             fd.append('visible', 'PUBLIC');
-            fd.append('image', formData.image);
+            if (formData.image instanceof File) {
+              fd.append('image', formData.image);
+            }
             fd.append('postToTelegram', String(formData.postToTelegram));
             fd.append('postToLinkedIn', String(formData.postToLinkedIn));
             const res = await blogApi.create(fd);
             const srv = res?.blog || res || {};
             const newBlog: BlogPost = {
               id: srv.id || `blog-${Date.now()}`,
-              coverImage: srv.coverImage || imagePreview || '',
-              visible: srv.visible || 'PUBLIC',
-              ...(srv),
-              title: formData.title,
-              description: formData.description,
-              content: formData.content,
-              createdAt: srv.createdAt || new Date().toISOString(),
-            } as any;
-            setBlogs((prev) => [newBlog, ...prev]);
-            showToast('Blog yaratildi', 'success', `Yangi PUBLIC blog saqlandi`);
-          } else {
-            const payload = {
-              title: formData.title,
-              description: formData.description,
-              content: formData.content,
-              image: typeof formData.image === 'string' ? formData.image : undefined,
-              visible: 'PUBLIC',
-              postToTelegram: formData.postToTelegram,
-              postToLinkedIn: formData.postToLinkedIn,
-            };
-            const res = await blogApi.create(payload);
-            const srv = res?.blog || res || {};
-            const newBlog: BlogPost = {
-              id: srv.id || `blog-${Date.now()}`,
-              coverImage: srv.coverImage || payload.image || '',
+              coverImage: srv.coverImage || '',
               visible: srv.visible || 'PUBLIC',
               ...(srv),
               title: srv.title_uz || formData.title,
@@ -304,7 +289,16 @@ export const BlogManager: React.FC = () => {
               createdAt: srv.createdAt || new Date().toISOString(),
             } as any;
             setBlogs((prev) => [newBlog, ...prev]);
-            showToast('Blog yaratildi', 'success', `Yangi PUBLIC blog saqlandi`);
+
+            if (formData.postToLinkedIn && srv.linkedin?.posted === false) {
+              showToast(
+                'Blog yaratildi',
+                'info',
+                `LinkedIn'ga post qilinmadi: ${srv.linkedin.reason === 'not_connected' ? "LinkedIn ulanmagan (Setting'da token yo'q)" : srv.linkedin.reason === 'token_expired' ? 'LinkedIn tokeni muddati tugagan' : 'LinkedIn API xatosi'}`
+              );
+            } else {
+              showToast('Blog yaratildi', 'success', `Yangi PUBLIC blog saqlandi`);
+            }
           }
         }
       }
@@ -376,7 +370,7 @@ export const BlogManager: React.FC = () => {
               <div key={blog.id} className="bg-gradient-to-b from-[#07120f] to-[#071219] border border-[#2b3a33] rounded-sm overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-shadow duration-300">
                 <div>
                   <div className="relative h-44 w-full bg-[#131b16] overflow-hidden">
-                    <img src={blog.coverImage || imagePreview || 'https://images.unsplash.com/photo-1633265486064-086b219458ec?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <img src={blog.coverImage || 'https://images.unsplash.com/photo-1633265486064-086b219458ec?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     <div className="absolute inset-0 bg-gradient-to-t from-[#071217]/80 via-transparent to-black/30" />
                     <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-[#0b1b15]/90 border border-[#274b3c] text-[10px] font-mono font-semibold text-[#ffd8a8] flex items-center gap-2">
                       <Globe2 className="w-3 h-3 text-[#ffd8a8]" />
