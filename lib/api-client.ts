@@ -63,8 +63,21 @@ apiClient.interceptors.response.use(
       bo'layotgani" darhol ko'rinsin uchun, har bir joyda alohida
       o'qishning hojati yo'q.
     */
+    const STAGE_LABELS: Record<string, string> = {
+      validation: 'Tekshiruv',
+      translate: 'Tarjima',
+      'slug-check': 'Manzil (slug) tekshiruvi',
+      embedding: 'Qidiruv indeksi (embedding)',
+      'image-upload': 'Rasm yuklash',
+      transaction: 'Bazaga yozish',
+    };
+
+    const stage = data?.details?.stage as string | undefined;
+    const stageLabel = stage ? STAGE_LABELS[stage] : undefined;
+
     const debug = data?.details?.debug;
-    const fullMessage = debug && debug !== message ? `${message} — ${debug}` : message;
+    const withDebug = debug && debug !== message ? `${message} — ${debug}` : message;
+    const fullMessage = stageLabel ? `[${stageLabel}] ${withDebug}` : withDebug;
 
     const apiError: ApiError = new Error(fullMessage);
     apiError.status = status;
