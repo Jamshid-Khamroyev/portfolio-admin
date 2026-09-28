@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import {
   Plus,
   BookOpen,
@@ -23,10 +23,14 @@ import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
 import RichTextEditor from './shared/RichTextEditor';
 
-export const BlogManager: React.FC = () => {
+interface BlogManagerProps {
+  /** Navbar'dagi umumiy qidiruv qatori — blog raqami (masalan "1047") bo'yicha */
+  searchQuery?: string;
+}
+
+export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) => {
   const { blogs, loaded, setBlogs } = useBlogStore();
   const [loading, setLoading] = useState<boolean>(!loaded);
-  const [searchQuery] = useState<string>('');
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -97,7 +101,7 @@ export const BlogManager: React.FC = () => {
     const loadBlogs = async () => {
       setLoading(true);
       try {
-        const data: BlogPost[] = searchQuery.trim() ? await blogApi.search(searchQuery) : await blogApi.getAll();
+        const data: BlogPost[] = await blogApi.getAll();
         if (!ignore) setBlogs(data);
       } catch (err: any) {
         if (!ignore) showToast('Bloglarni yuklashda xatolik', 'error', err.message);
@@ -107,7 +111,18 @@ export const BlogManager: React.FC = () => {
     };
     loadBlogs();
     return () => { ignore = true; };
-  }, [loaded, searchQuery, showToast, setBlogs]);
+  }, [loaded, showToast, setBlogs]);
+
+  /*
+    Qidiruv — sarlavha/tavsif emas, blog raqami (masalan "1047") bo'yicha.
+    Hammasi allaqachon Zustand'da xotirada turgani uchun server'ga
+    murojaat qilmasdan, shu yerning o'zida filtrlab ko'rsatamiz.
+  */
+  const filteredBlogs = useMemo(() => {
+    const digits = searchQuery.replace(/\D/g, '');
+    if (!digits) return blogs;
+    return blogs.filter((b) => String(b.blogNumber ?? '').includes(digits));
+  }, [blogs, searchQuery]);
 
   const revokeObjectUrl = () => {
     if (imageObjectUrl.current) {
@@ -335,7 +350,7 @@ export const BlogManager: React.FC = () => {
           <div>
             <h2 className="text-base font-bold text-[#eaf2ec] flex items-center gap-2">
               <span>Blog Boshqaruvi</span>
-              <span className="text-xs text-[#ffbf59] font-mono">{`(${blogs.length} ta)`}</span>
+              <span className="text-xs text-[#ffbf59] font-mono">{`(${filteredBlogs.length}${filteredBlogs.length !== blogs.length ? ` / ${blogs.length}` : ''} ta)`}</span>
             </h2>
             <p className="text-xs text-[#cfe9dd]">Yangi maqolalar chop etish, yangilash va o&apos;chirish — tez va chiroyli.</p>
           </div>
@@ -365,9 +380,15 @@ export const BlogManager: React.FC = () => {
           <p className="text-xs text-[#71847a] mt-1">Yangi post yaratishni boshlang.</p>
           <button onClick={handleOpenNewModal} className="mt-4 px-4 py-2 rounded-xl bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] text-xs font-mono font-semibold">+ Birinchi blog yaratish</button>
         </div>
+      ) : filteredBlogs.length === 0 ? (
+        <div className="p-12 text-center bg-[#0d1310] rounded-sm border border-[#213028]">
+          <FileText className="w-12 h-12 text-[#71847a] mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-[#aab8b0]">#{searchQuery.replace(/\D/g, '')} raqamli blog topilmadi</h3>
+          <p className="text-xs text-[#71847a] mt-1">Boshqa raqam bilan qidirib ko&apos;ring.</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {blogs.map((blog) => {
+          {filteredBlogs.map((blog) => {
             const title = (blog as any).title_uz || blog.title || '—';
             const desc = (blog as any).description_uz || (blog as any).description || '';
             const created = blog.createdAt 

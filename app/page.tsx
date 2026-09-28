@@ -82,7 +82,7 @@ function DashboardInner() {
 
         <main className="flex-1 pb-12">
           {activeTab === 'using' && <UsageDashboard />}
-          {activeTab === 'blog' && <BlogManager />}
+          {activeTab === 'blog' && <BlogManager searchQuery={searchQuery} />}
           {activeTab === 'projects' && <ProjectManager />}
           {activeTab === 'chats' && <ChatLogs />}
         </main>

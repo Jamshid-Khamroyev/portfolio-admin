@@ -60,9 +60,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Search className="w-4 h-4 text-[#71847a] absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Qidiruv..."
+                inputMode={activeTab === 'blog' ? 'numeric' : 'text'}
+                maxLength={activeTab === 'blog' ? 4 : undefined}
+                placeholder={activeTab === 'blog' ? 'Blog ID (masalan 1047)...' : 'Qidiruv...'}
                 value={searchQuery || ''}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) =>
+                  setSearchQuery(
+                    activeTab === 'blog' ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value
+                  )
+                }
                 className="w-full pl-9 pr-3 py-1.5 bg-[#131b16] border border-[#213028] rounded-lg text-xs text-[#eaf2ec] placeholder-[#71847a] focus:outline-none focus:border-[#49f08a]/60 transition-colors font-mono"
               />
             </div>
