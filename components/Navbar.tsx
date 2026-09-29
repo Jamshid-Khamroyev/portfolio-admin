@@ -32,6 +32,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       title: 'Chat Logs & User Messages',
       desc: 'Tashrif buyuruvchilar xabarlari va AI yordamchisining javoblari',
     },
+    push: {
+      title: 'Push Notifications',
+      desc: "Barcha obunachilarga qo'lda bildirishnoma yuborish",
+    },
   };
 
   const currentInfo = titleMap[activeTab] || {

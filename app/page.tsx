@@ -22,6 +22,10 @@ const ChatLogs = dynamic(() => import('@/components/ChatLogs').then((mod) => mod
   ssr: false,
 });
 
+const PushSender = dynamic(() => import('@/components/PushSender').then((mod) => mod.PushSender), {
+  ssr: false,
+});
+
 const emptySubscribe = () => () => {};
 
 function useMounted() {
@@ -39,7 +43,7 @@ function DashboardInner() {
   const searchParams = useSearchParams();
 
   const tabFromUrl = searchParams.get('tab');
-  const activeTab = tabFromUrl && ['using', 'blog', 'projects', 'chats'].includes(tabFromUrl)
+  const activeTab = tabFromUrl && ['using', 'blog', 'projects', 'chats', 'push'].includes(tabFromUrl)
     ? tabFromUrl
     : 'using';
 
@@ -85,6 +89,7 @@ function DashboardInner() {
           {activeTab === 'blog' && <BlogManager searchQuery={searchQuery} />}
           {activeTab === 'projects' && <ProjectManager />}
           {activeTab === 'chats' && <ChatLogs />}
+          {activeTab === 'push' && <PushSender />}
         </main>
       </div>
     </div>

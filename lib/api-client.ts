@@ -219,6 +219,17 @@ export const socialsApi = {
   },
 };
 
+export const pushApi = {
+  getStats: async () => {
+    const res = await apiClient.get('/api/push/send');
+    return res.data;
+  },
+  send: async (data: { title: string; body?: string; url?: string; image?: string }) => {
+    const res = await apiClient.post('/api/push/send', data);
+    return res.data;
+  },
+};
+
 export const aiApi = {
   analyze: async (query?: string, timeRange = '1-month') => {
     const res = await apiClient.post('/api/ai', { query, timeRange });

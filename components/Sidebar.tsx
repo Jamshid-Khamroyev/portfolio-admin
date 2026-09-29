@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Activity, BookOpen, FolderGit2, MessageSquare, LogOut, Terminal, ExternalLink } from 'lucide-react';
+import { Activity, BookOpen, FolderGit2, MessageSquare, Bell, LogOut, Terminal, ExternalLink } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useToast } from './Toast';
 
@@ -28,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => 
     { id: 'blog', label: 'Bloglar (CRUD)', icon: BookOpen },
     { id: 'projects', label: 'Loyihalar (CRUD)', icon: FolderGit2 },
     { id: 'chats', label: 'Chatlar & Xabarlar', icon: MessageSquare },
+    { id: 'push', label: 'Push Bildirishnoma', icon: Bell },
   ];
 
   return (
