@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Search } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 interface NavbarProps {
   activeTab: string;
@@ -44,24 +45,24 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="bg-[#0d1310]/95 border-b border-[#213028] sticky top-0 z-40 backdrop-blur-md">
+    <header className="bg-bg-1/95 border-b border-line sticky top-0 z-40 backdrop-blur-md">
       {/* Top Header Bar */}
       <div className="px-6 py-4 flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl font-bold text-[#eaf2ec] flex items-center gap-2 tracking-tight">
+          <h1 className="text-xl font-bold text-text-0 flex items-center gap-2 tracking-tight">
             <span>{currentInfo.title}</span>
-            <span className="text-xs px-2 py-0.5 rounded-full bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] font-mono">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-bg-3 border border-accent-dim/40 text-accent font-mono">
               Live
             </span>
           </h1>
-          <p className="text-xs text-[#aab8b0] mt-0.5">{currentInfo.desc}</p>
+          <p className="text-xs text-text-1 mt-0.5">{currentInfo.desc}</p>
         </div>
 
         <div className="flex items-center gap-4">
           {/* Quick Search */}
           {setSearchQuery && (
             <div className="relative w-64 sm:w-80">
-              <Search className="w-4 h-4 text-[#71847a] absolute left-3 top-1/2 -translate-y-1/2" />
+              <Search className="w-4 h-4 text-text-2 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 inputMode={activeTab === 'blog' ? 'numeric' : 'text'}
@@ -73,10 +74,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                     activeTab === 'blog' ? e.target.value.replace(/\D/g, '').slice(0, 4) : e.target.value
                   )
                 }
-                className="w-full pl-9 pr-3 py-1.5 bg-[#131b16] border border-[#213028] rounded-lg text-xs text-[#eaf2ec] placeholder-[#71847a] focus:outline-none focus:border-[#49f08a]/60 transition-colors font-mono"
+                className="w-full pl-9 pr-3 py-1.5 bg-bg-2 border border-line rounded-lg text-xs text-text-0 placeholder-text-2 focus:outline-none focus:border-accent/60 transition-colors font-mono"
               />
             </div>
           )}
+          <ThemeToggle />
         </div>
       </div>
     </header>

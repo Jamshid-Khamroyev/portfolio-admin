@@ -236,3 +236,18 @@ export const aiApi = {
     return res.data;
   },
 };
+
+export const uploadApi = {
+  /** Blog matni ichidagi rasmni ImageKit ga yuklaydi */
+  image: async (file: File): Promise<{ url: string; fileId: string }> => {
+    const fd = new FormData();
+    fd.append("image", file);
+    const res = await apiClient.post("/api/upload/image", fd);
+    return res.data;
+  },
+  /** Rasmlarni ImageKit dan o'chiradi (mavjud bo'lmaganlari e'tiborsiz qoldiriladi) */
+  remove: async (fileIds: string[]): Promise<void> => {
+    if (!fileIds.length) return;
+    await apiClient.delete('/api/upload/image', { data: { fileIds } });
+  },
+};

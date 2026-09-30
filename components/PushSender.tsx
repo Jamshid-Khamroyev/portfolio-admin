@@ -15,7 +15,7 @@ const TITLE_MAX = 70;
 const BODY_MAX = 110;
 
 const inputCls =
-  'w-full bg-[#0d1310] border border-[#213028] rounded-sm px-3 py-2 text-sm text-[#eaf2ec] placeholder:text-[#71847a] focus:outline-none focus:border-[#1f8a52]';
+  'w-full bg-bg-1 border border-line rounded-sm px-3 py-2 text-sm text-text-0 placeholder:text-text-2 focus:outline-none focus:border-accent-dim';
 
 export const PushSender: React.FC = () => {
   const { showToast } = useToast();
@@ -79,15 +79,15 @@ export const PushSender: React.FC = () => {
     <div className="p-6 grid gap-6 lg:grid-cols-[1fr_320px]">
       <form
         onSubmit={handleSend}
-        className="bg-[#0d1310] border border-[#213028] rounded-sm p-5 space-y-4"
+        className="bg-bg-1 border border-line rounded-sm p-5 space-y-4"
       >
-        <div className="flex items-center gap-2 text-[#eaf2ec] font-semibold">
-          <Bell className="w-4 h-4 text-[#49f08a]" />
+        <div className="flex items-center gap-2 text-text-0 font-semibold">
+          <Bell className="w-4 h-4 text-accent" />
           Yangi bildirishnoma
         </div>
 
         <label className="block space-y-1.5">
-          <span className="text-xs font-mono text-[#aab8b0]">Sarlavha *</span>
+          <span className="text-xs font-mono text-text-1">Sarlavha *</span>
           <input
             className={inputCls}
             value={title}
@@ -96,13 +96,13 @@ export const PushSender: React.FC = () => {
             placeholder="Yangi loyiha chiqdi!"
             required
           />
-          <span className="block text-right text-[10px] font-mono text-[#71847a]">
+          <span className="block text-right text-[10px] font-mono text-text-2">
             {title.length}/{TITLE_MAX}
           </span>
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-xs font-mono text-[#aab8b0]">Matn</span>
+          <span className="text-xs font-mono text-text-1">Matn</span>
           <textarea
             className={`${inputCls} resize-none`}
             rows={3}
@@ -111,26 +111,26 @@ export const PushSender: React.FC = () => {
             onChange={(e) => setBody(e.target.value)}
             placeholder="Qisqa tavsif..."
           />
-          <span className="block text-right text-[10px] font-mono text-[#71847a]">
+          <span className="block text-right text-[10px] font-mono text-text-2">
             {body.length}/{BODY_MAX}
           </span>
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-xs font-mono text-[#aab8b0]">Havola</span>
+          <span className="text-xs font-mono text-text-1">Havola</span>
           <input
             className={inputCls}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="/blogs yoki https://..."
           />
-          <span className="block text-[10px] font-mono text-[#71847a]">
+          <span className="block text-[10px] font-mono text-text-2">
             Nisbiy yo&apos;l obunachi tiliga moslanadi: /blogs → /uz/blogs. Bo&apos;sh bo&apos;lsa — bosh sahifa.
           </span>
         </label>
 
         <label className="block space-y-1.5">
-          <span className="text-xs font-mono text-[#aab8b0]">Rasm URL (ixtiyoriy)</span>
+          <span className="text-xs font-mono text-text-1">Rasm URL (ixtiyoriy)</span>
           <input
             className={inputCls}
             value={image}
@@ -142,7 +142,7 @@ export const PushSender: React.FC = () => {
         <button
           type="submit"
           disabled={sending || !title.trim() || !stats?.configured || !stats?.total}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-[#1f8a52] text-white text-sm font-semibold hover:bg-[#23a060] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-accent text-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           <Send className="w-4 h-4" />
           {sending ? 'Yuborilmoqda...' : 'Hammaga yuborish'}
@@ -150,22 +150,22 @@ export const PushSender: React.FC = () => {
       </form>
 
       <div className="space-y-4">
-        <div className="bg-[#0d1310] border border-[#213028] rounded-sm p-5">
+        <div className="bg-bg-1 border border-line rounded-sm p-5">
           <div className="flex items-center justify-between mb-3">
-            <span className="flex items-center gap-2 text-sm text-[#aab8b0]">
+            <span className="flex items-center gap-2 text-sm text-text-1">
               <Users className="w-4 h-4" /> Obunachilar
             </span>
             <button
               type="button"
               onClick={fetchStats}
               title="Yangilash"
-              className="p-1 text-[#71847a] hover:text-[#49f08a]"
+              className="p-1 text-text-2 hover:text-accent"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-          <div className="text-3xl font-bold text-[#49f08a] font-mono">{stats?.total ?? '—'}</div>
-          <div className="mt-3 flex gap-3 text-xs font-mono text-[#aab8b0]">
+          <div className="text-3xl font-bold text-accent font-mono">{stats?.total ?? '—'}</div>
+          <div className="mt-3 flex gap-3 text-xs font-mono text-text-1">
             {['uz', 'ru', 'en'].map((l) => (
               <span key={l}>
                 {l.toUpperCase()}: {stats?.byLocale?.[l] ?? 0}
@@ -173,20 +173,20 @@ export const PushSender: React.FC = () => {
             ))}
           </div>
           {stats && !stats.configured && (
-            <p className="mt-3 text-xs text-[#ff6b6b]">
+            <p className="mt-3 text-xs text-danger">
               VAPID kalitlari sozlanmagan — push yuborib bo&apos;lmaydi.
             </p>
           )}
         </div>
 
         {/* Ko'rinish (taxminiy) */}
-        <div className="bg-[#0d1310] border border-[#213028] rounded-sm p-4">
-          <p className="text-[10px] font-mono uppercase tracking-widest text-[#71847a] mb-2">Ko&apos;rinishi</p>
-          <div className="flex gap-3 items-start bg-[#131b16] rounded-md p-3">
-            <div className="w-9 h-9 rounded-md bg-[#182119] border border-[#213028] shrink-0" />
+        <div className="bg-bg-1 border border-line rounded-sm p-4">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-text-2 mb-2">Ko&apos;rinishi</p>
+          <div className="flex gap-3 items-start bg-bg-2 rounded-md p-3">
+            <div className="w-9 h-9 rounded-md bg-bg-3 border border-line shrink-0" />
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-[#eaf2ec] truncate">{title || 'Sarlavha'}</p>
-              <p className="text-xs text-[#aab8b0] line-clamp-2">{body || 'Matn'}</p>
+              <p className="text-sm font-semibold text-text-0 truncate">{title || 'Sarlavha'}</p>
+              <p className="text-xs text-text-1 line-clamp-2">{body || 'Matn'}</p>
             </div>
           </div>
         </div>

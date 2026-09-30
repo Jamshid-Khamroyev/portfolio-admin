@@ -22,6 +22,10 @@ const ChatLogs = dynamic(() => import('@/components/ChatLogs').then((mod) => mod
   ssr: false,
 });
 
+const VisitorDetail = dynamic(() => import('@/components/VisitorDetail').then((mod) => mod.VisitorDetail), {
+  ssr: false,
+});
+
 const PushSender = dynamic(() => import('@/components/PushSender').then((mod) => mod.PushSender), {
   ssr: false,
 });
@@ -47,20 +51,23 @@ function DashboardInner() {
     ? tabFromUrl
     : 'using';
 
+  const visitorId = searchParams.get('visitor');
+
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   const setActiveTab = (tab: string) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
+    params.delete('visitor');
     router.replace(`?${params.toString()}`);
   };
 
   if (!mounted || loading) {
     return (
-      <div className="min-h-screen bg-[#090d16] flex items-center justify-center">
+      <div className="min-h-screen bg-bg-0 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-xs font-mono text-emerald-400">Admin Panel Yuklanmoqda...</span>
+          <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
+          <span className="text-xs font-mono text-accent">Admin Panel Yuklanmoqda...</span>
         </div>
       </div>
     );
@@ -71,7 +78,7 @@ function DashboardInner() {
   }
 
   return (
-    <div className="flex min-h-screen text-slate-100 font-sans">
+    <div className="flex min-h-screen text-text-0 font-sans">
       {/* Left Sidebar */}
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
@@ -85,7 +92,11 @@ function DashboardInner() {
         />
 
         <main className="flex-1 pb-12">
-          {activeTab === 'using' && <UsageDashboard />}
+          {activeTab === 'using' && (visitorId ? (
+            <VisitorDetail visitorId={visitorId} onBack={() => router.back()} />
+          ) : (
+            <UsageDashboard />
+          ))}
           {activeTab === 'blog' && <BlogManager searchQuery={searchQuery} />}
           {activeTab === 'projects' && <ProjectManager />}
           {activeTab === 'chats' && <ChatLogs />}
@@ -102,8 +113,8 @@ export default function Home() {
       <AuthProvider>
         <Suspense
           fallback={
-            <div className="min-h-screen bg-[#090d16] flex items-center justify-center">
-              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            <div className="min-h-screen bg-bg-0 flex items-center justify-center">
+              <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
             </div>
           }
         >

@@ -15,13 +15,22 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { BlogPost, BlogViewStats } from '@/lib/data-store';
-import { blogApi } from '@/lib/api-client';
+import { blogApi, uploadApi } from '@/lib/api-client';
 import { useBlogStore } from '@/hooks/useBlogStore';
 import { useToast } from './Toast';
 import type { JSONContent } from "@tiptap/react"
 import { format } from 'date-fns';
 import { uz } from 'date-fns/locale';
-import RichTextEditor from './shared/RichTextEditor';
+import RichTextEditor, { collectImageFileIds } from './shared/RichTextEditor';
+import { ExpandableModal } from './ExpandableModal';
+import { DraftsTray } from './DraftsTray';
+import { useDrafts, readDrafts, newDraftId, type Draft } from '@/lib/drafts';
+import { readModalSession, writeModalSession, clearModalSession } from '@/lib/modalSession';
+
+interface BlogDraftData {
+  form: { title: string; description: string; content: JSONContent; isPrivate: boolean; postToTelegram: boolean; postToLinkedIn: boolean };
+  seen: string[];
+}
 
 interface BlogManagerProps {
   /** Navbar'dagi umumiy qidiruv qatori — blog raqami (masalan "1047") bo'yicha */
@@ -34,9 +43,16 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingBlog, setEditingBlog] = useState<BlogPost | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [imagesUploading, setImagesUploading] = useState<boolean>(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
   const imageObjectUrl = useRef<string | null>(null);
+  /* Muharrir sessiyasida ko'rilgan barcha rasm fileId'lari — saqlangach ishlatilmaganlari ImageKit'dan o'chiriladi */
+  const seenImageIds = useRef<Set<string>>(new Set());
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const restored = useRef(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const { drafts, save: saveDraft, remove: removeDraft } = useDrafts<BlogDraftData>('blog');
   const { showToast } = useToast();
 
   const [statsBlog, setStatsBlog] = useState<BlogPost | null>(null);
@@ -113,6 +129,28 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
     return () => { ignore = true; };
   }, [loaded, showToast, setBlogs]);
 
+  const hasDraftContent = (f: { title: string; description: string; content: JSONContent }) =>
+    Boolean(f.title.trim() || f.description.trim() || (f.content?.content ?? []).some((n: any) => n.type === 'image' || n.content?.length));
+
+  /* Yangi blog yozilayotganda qoralama avtomatik saqlanadi */
+  useEffect(() => {
+    if (!isModalOpen || editingBlog || !draftId || !hasDraftContent(formData)) return;
+    const t = setTimeout(() => {
+      saveDraft(draftId, formData.title, {
+        form: {
+          title: formData.title,
+          description: formData.description,
+          content: formData.content,
+          isPrivate: formData.isPrivate,
+          postToTelegram: formData.postToTelegram,
+          postToLinkedIn: formData.postToLinkedIn,
+        },
+        seen: [...seenImageIds.current],
+      });
+    }, 600);
+    return () => clearTimeout(t);
+  }, [formData, isModalOpen, editingBlog, draftId, saveDraft]);
+
   /*
     Qidiruv — sarlavha/tavsif emas, blog raqami (masalan "1047") bo'yicha.
     Hammasi allaqachon Zustand'da xotirada turgani uchun server'ga
@@ -147,7 +185,46 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
     setEditingBlog(null);
     setFormData({ title: '', description: '', content: { type: 'doc', content: [] } as JSONContent, image: null, isPrivate: false, postToTelegram: true, postToLinkedIn: true });
     setImagePreview('');
+    seenImageIds.current = new Set();
+    setDraftId(newDraftId());
     setIsModalOpen(true);
+  };
+
+  const handleResumeDraft = (d: Draft<BlogDraftData>) => {
+    revokeObjectUrl();
+    setEditingBlog(null);
+    setFormData({ ...d.data.form, image: null });
+    setImagePreview('');
+    seenImageIds.current = new Set(d.data.seen ?? []);
+    setDraftId(d.id);
+    setIsModalOpen(true);
+  };
+
+  /* Qoralamani butunlay o'chirish — unga yuklangan rasmlar ImageKit'dan ham o'chadi */
+  const handleDeleteDraft = (d: Draft<BlogDraftData>) => {
+    if (!window.confirm(`"${d.title || 'Nomsiz qoralama'}" qoralamasini o'chirmoqchimisiz?`)) return;
+    const ids = collectImageFileIds(d.data.form.content).concat(d.data.seen ?? []);
+    uploadApi.remove([...new Set(ids)]).catch(() => {});
+    removeDraft(d.id);
+    showToast("Qoralama o'chirildi", 'info', 'Rasmlari ham tozalandi');
+  };
+
+  /* Yopish — qoralama saqlanib qoladi (pastdagi ro'yxatdan davom ettiriladi) */
+  const handleCloseModal = () => {
+    if (imagesUploading) {
+      showToast('Rasm yuklanmoqda', 'info', 'Yuklash tugashini kuting');
+      return;
+    }
+    if (!editingBlog && draftId) {
+      if (hasDraftContent(formData)) {
+        showToast('Qoralama saqlandi', 'info', 'Sahifa pastidan davom ettirishingiz mumkin');
+      } else {
+        removeDraft(draftId);
+      }
+    }
+    setIsModalOpen(false);
+    setDraftId(null);
+    revokeObjectUrl();
   };
 
   const handleOpenEditModal = (blog: BlogPost) => {
@@ -163,6 +240,8 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
       postToLinkedIn: true,
     });
     setImagePreview(blog.coverImage || '');
+    seenImageIds.current = new Set(collectImageFileIds((blog as any).content_uz || blog.content));
+    setDraftId(null);
     setIsModalOpen(true);
   };
 
@@ -227,6 +306,10 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (imagesUploading) {
+      showToast("Rasm yuklanmoqda", "info", "Yuklash tugashini kuting");
+      return;
+    }
     if (!formData.title.trim()) {
       showToast('Xatolik', 'error', 'Sarlavha (title) bo\'sh bo\'lishi mumkin emas');
       return;
@@ -324,7 +407,13 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
           }
         }
       }
+      /* Matndan olib tashlangan / almashtirilgan rasmlarni ImageKit'dan tozalaymiz */
+      const keep = new Set(collectImageFileIds(formData.content));
+      const orphans = [...seenImageIds.current].filter((id) => !keep.has(id));
+      if (orphans.length) uploadApi.remove(orphans).catch(() => {});
+      if (draftId) removeDraft(draftId);
       setIsModalOpen(false);
+      setDraftId(null);
       revokeObjectUrl();
     } catch (err: any) {
       console.log(err);
@@ -334,6 +423,56 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
     }
   };
 
+  /* Sahifa yangilanganda modal oldingi holatida (ochiq/yopiq, qaysi yozuv) qayta ochiladi */
+  useEffect(() => {
+    if (restored.current) return;
+    const sess = readModalSession<{ title: string; description: string; content: JSONContent; isPrivate: boolean }>('blog');
+
+    if (sess?.mode === 'edit') {
+      if (!loaded) return; // bloglar yuklanishini kutamiz
+      const blog = blogs.find((b) => b.id === sess.editingId);
+      restored.current = true;
+      if (blog) {
+        handleOpenEditModal(blog);
+        if (sess.form) setFormData((prev) => ({ ...prev, ...sess.form }));
+      }
+    } else if (sess?.mode === 'new') {
+      restored.current = true;
+      const d = readDrafts<BlogDraftData>('blog').find((x) => x.id === sess.draftId);
+      if (d) {
+        handleResumeDraft(d);
+      } else {
+        handleOpenNewModal();
+        if (sess.draftId) setDraftId(sess.draftId);
+      }
+    } else {
+      restored.current = true;
+    }
+    setSessionReady(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, blogs]);
+
+  /* Modal holatini yozib boramiz (yopilganda — o'chiramiz) */
+  useEffect(() => {
+    if (!sessionReady) return;
+    if (!isModalOpen) {
+      clearModalSession('blog');
+      return;
+    }
+    const t = setTimeout(() => {
+      if (editingBlog) {
+        writeModalSession('blog', {
+          mode: 'edit',
+          editingId: editingBlog.id,
+          form: { title: formData.title, description: formData.description, content: formData.content, isPrivate: formData.isPrivate },
+        });
+      } else {
+        writeModalSession('blog', { mode: 'new', draftId });
+      }
+    }, 300);
+    return () => clearTimeout(t);
+  }, [sessionReady, isModalOpen, editingBlog, draftId, formData]);
+
   const openPublic = (slug?: string) => {
     if (!slug) return;
     const url = `${process.env.NEXT_PUBLIC_SITE_URL}/blogs/${slug}`;
@@ -342,27 +481,27 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#07120f] to-[#0b1220] p-5 rounded-sm border border-[#213028] shadow-xl">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-bg-1 p-5 rounded-sm border border-line shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-sm bg-gradient-to-br from-[#1f3b2f] to-[#123127] border border-[#1f8a52]/40 text-[#a7ffd2]">
+          <div className="p-3 rounded-sm bg-accent/15 border border-accent-dim/30 text-accent">
             <BookOpen className="w-5 h-5" />
           </div>
           <div>
-            <h2 className="text-base font-bold text-[#eaf2ec] flex items-center gap-2">
+            <h2 className="text-base font-bold text-text-0 flex items-center gap-2">
               <span>Blog Boshqaruvi</span>
-              <span className="text-xs text-[#ffbf59] font-mono">{`(${filteredBlogs.length}${filteredBlogs.length !== blogs.length ? ` / ${blogs.length}` : ''} ta)`}</span>
+              <span className="text-xs text-warn font-mono">{`(${filteredBlogs.length}${filteredBlogs.length !== blogs.length ? ` / ${blogs.length}` : ''} ta)`}</span>
             </h2>
-            <p className="text-xs text-[#cfe9dd]">Yangi maqolalar chop etish, yangilash va o&apos;chirish — tez va chiroyli.</p>
+            <p className="text-xs text-text-0">Yangi maqolalar chop etish, yangilash va o&apos;chirish — tez va chiroyli.</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button
             onClick={handleOpenNewModal}
-            className="px-4 py-2 rounded-sm bg-gradient-to-r from-accent-glow to-[#3D2314] text-white font-semibold text-sm flex items-center gap-2 shadow-lg hover:scale-[1.01] transition-transform"
+            className="px-4 py-2 rounded-sm bg-accent text-on-accent hover:opacity-90 font-semibold text-sm flex items-center gap-2 shadow-sm transition-opacity"
             >
-            <Plus className="w-4 h-4 text-white" />
-            <span className="text-white">Yangi Blog</span>
+            <Plus className="w-4 h-4 text-on-accent" />
+            <span className="text-on-accent">Yangi Blog</span>
           </button>
         </div>
       </div>
@@ -370,21 +509,21 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-80 bg-[#131b16] rounded-sm border border-[#213028]"></div>
+            <div key={i} className="h-80 bg-bg-2 rounded-sm border border-line"></div>
           ))}
         </div>
       ) : blogs.length === 0 ? (
-        <div className="p-12 text-center bg-[#0d1310] rounded-sm border border-[#213028]">
-          <FileText className="w-12 h-12 text-[#71847a] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#aab8b0]">Bloglar topilmadi</h3>
-          <p className="text-xs text-[#71847a] mt-1">Yangi post yaratishni boshlang.</p>
-          <button onClick={handleOpenNewModal} className="mt-4 px-4 py-2 rounded-xl bg-[#182119] border border-[#1f8a52]/40 text-[#49f08a] text-xs font-mono font-semibold">+ Birinchi blog yaratish</button>
+        <div className="p-12 text-center bg-bg-1 rounded-sm border border-line">
+          <FileText className="w-12 h-12 text-text-2 mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-text-1">Bloglar topilmadi</h3>
+          <p className="text-xs text-text-2 mt-1">Yangi post yaratishni boshlang.</p>
+          <button onClick={handleOpenNewModal} className="mt-4 px-4 py-2 rounded-xl bg-bg-3 border border-accent-dim/40 text-accent text-xs font-mono font-semibold">+ Birinchi blog yaratish</button>
         </div>
       ) : filteredBlogs.length === 0 ? (
-        <div className="p-12 text-center bg-[#0d1310] rounded-sm border border-[#213028]">
-          <FileText className="w-12 h-12 text-[#71847a] mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-[#aab8b0]">#{searchQuery.replace(/\D/g, '')} raqamli blog topilmadi</h3>
-          <p className="text-xs text-[#71847a] mt-1">Boshqa raqam bilan qidirib ko&apos;ring.</p>
+        <div className="p-12 text-center bg-bg-1 rounded-sm border border-line">
+          <FileText className="w-12 h-12 text-text-2 mx-auto mb-3" />
+          <h3 className="text-sm font-bold text-text-1">#{searchQuery.replace(/\D/g, '')} raqamli blog topilmadi</h3>
+          <p className="text-xs text-text-2 mt-1">Boshqa raqam bilan qidirib ko&apos;ring.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -395,17 +534,17 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
   ? format(new Date(blog.createdAt), "d-MMMM, yyyy, HH:mm:ss", { locale: uz }) 
   : '';
             return (
-              <div key={blog.id} className="bg-gradient-to-b from-[#07120f] to-[#071219] border border-[#2b3a33] rounded-sm overflow-hidden flex flex-col justify-between group hover:shadow-2xl transition-shadow duration-300">
+              <div key={blog.id} className="bg-bg-1 border border-line rounded-sm overflow-hidden flex flex-col justify-between group hover:shadow-md transition-shadow duration-300">
                 <div>
-                  <div className="relative h-44 w-full bg-[#131b16] overflow-hidden">
+                  <div className="relative h-44 w-full bg-bg-2 overflow-hidden">
                     <img src={blog.coverImage || 'https://images.unsplash.com/photo-1633265486064-086b219458ec?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'} alt={title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#071217]/80 via-transparent to-black/30" />
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-[#0b1b15]/90 border border-[#274b3c] text-[10px] font-mono font-semibold text-[#ffd8a8] flex items-center gap-2">
-                      <Globe2 className="w-3 h-3 text-[#ffd8a8]" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-bg-2/90 border border-line text-[10px] font-mono font-semibold text-text-0 flex items-center gap-2">
+                      <Globe2 className="w-3 h-3 text-text-0" />
                       <span>{blog.visible === 'PRIVATE' ? 'MAXFIY' : 'PUBLIC'}</span>
                     </div>
                     {blog.visible === 'PRIVATE' && (
-                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-[#3b1717]/20 border border-[#7f2b2b] text-[10px] font-mono text-[#ff9a9a] flex items-center gap-1">
+                      <div className="absolute top-3 right-3 px-2.5 py-1 rounded-md bg-bg-2/20 border border-danger/40 text-[10px] font-mono text-warn flex items-center gap-1">
                         <Lock className="w-3 h-3" />
                         <span>Maxfiy</span>
                       </div>
@@ -414,39 +553,39 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
 
                   <div className="p-5 space-y-3">
                     <div className="flex items-start justify-between gap-3">
-                      <h3 className="text-base font-bold text-[#f3fff7] line-clamp-1 truncate max-w-[70%]">{title}</h3>
+                      <h3 className="text-base font-bold text-text-0 line-clamp-1 truncate max-w-[70%]">{title}</h3>
                       {typeof blog.blogNumber === 'number' && (
-                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-[#131b16] border border-[#213028] text-[10px] font-mono font-semibold text-[#49f08a]">#{blog.blogNumber}</span>
+                        <span className="shrink-0 px-2 py-0.5 rounded-md bg-bg-2 border border-line text-[10px] font-mono font-semibold text-accent">#{blog.blogNumber}</span>
                       )}
                     </div>
 
-                    <p className="text-sm text-[#cfe4db] line-clamp-3">{desc || (blog as any).content_uz?.slice(0, 200) || (blog.content || '').slice(0, 200)}</p>
+                    <p className="text-sm text-text-0 line-clamp-3">{desc || (blog as any).content_uz?.slice(0, 200) || (blog.content || '').slice(0, 200)}</p>
                   </div>
                 </div>
 
-                <div className="p-4 border-t border-[#213028] bg-[#041010]/60 flex items-center justify-between gap-3">
-                  <div className="text-[11px] text-[#8fbfa6] font-mono">
+                <div className="p-4 border-t border-line bg-bg-2/60 flex items-center justify-between gap-3">
+                  <div className="text-[11px] text-text-1 font-mono">
                     <div>{created}</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleOpenStats(blog)}
                       title="Ko'rishlar statistikasi"
-                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#131b16] border border-[#213028] text-[#aab8b0] hover:text-[#49f08a] hover:border-[#1f8a52]/50 text-xs font-mono transition-colors"
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-bg-2 border border-line text-text-1 hover:text-accent hover:border-accent-dim/50 text-xs font-mono transition-colors"
                     >
                       <Eye className="w-3.5 h-3.5" />
                       <span>{blog.views ?? 0}</span>
                     </button>
-                    <button onClick={() => openPublic((blog as any).slug)} className="px-3 py-1.5 rounded-lg bg-[#072b2f] border border-[#2ea7a8] text-[#c8fff7] hover:bg-[#0f5e61] text-xs font-semibold flex items-center gap-2 transition-colors">
+                    <button onClick={() => openPublic((blog as any).slug)} className="px-3 py-1.5 rounded-lg bg-bg-2 border border-accent-dim/40 text-text-0 hover:bg-bg-2 text-xs font-semibold flex items-center gap-2 transition-colors">
                       <Globe2 className="w-4 h-4" />
                       Open
                     </button>
-                    <button onClick={() => handleOpenEditModal(blog)} className="px-3 py-1.5 rounded-lg bg-[#0f2b26] border border-[#3e9b77] text-[#c8ffee] hover:bg-[#2a6a53] text-xs font-semibold flex items-center gap-2 transition-colors">
+                    <button onClick={() => handleOpenEditModal(blog)} className="px-3 py-1.5 rounded-lg bg-bg-2 border border-accent-dim/40 text-text-0 hover:bg-[#2a6a53] text-xs font-semibold flex items-center gap-2 transition-colors">
                       <Edit className="w-4 h-4" />
                       Update
                     </button>
-                    <button onClick={() => handleDelete(blog.id, (blog as any).title_uz || blog.title)} disabled={deletingId === blog.id} className="p-2 rounded-lg bg-[#2b1212] border border-[#7f2b2b] text-[#ffb6b6] hover:bg-[#5a1f1f] text-xs transition-colors disabled:opacity-50 flex items-center justify-center">
-                      {deletingId === blog.id ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-[#ffb6b6] border-t-transparent" /> : <Trash2 className="w-4 h-4" />}
+                    <button onClick={() => handleDelete(blog.id, (blog as any).title_uz || blog.title)} disabled={deletingId === blog.id} className="p-2 rounded-lg bg-bg-2 border border-danger/40 text-warn hover:bg-danger/15 text-xs transition-colors disabled:opacity-50 flex items-center justify-center">
+                      {deletingId === blog.id ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-danger border-t-transparent" /> : <Trash2 className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
@@ -456,34 +595,37 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
         </div>
       )}
 
+      <DraftsTray drafts={drafts} onResume={handleResumeDraft} onDelete={handleDeleteDraft} />
+
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#0d1310] border border-[#213028] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl my-8">
-            <div className="p-5 border-b border-[#213028] flex items-center justify-between bg-[#080b09]">
-              <div className="flex items-center gap-2 text-[#49f08a] font-mono text-sm font-bold">
-                <BookOpen className="w-4 h-4" />
-                <span>{editingBlog ? 'Blogni Yangilash (Update)' : 'Yangi Blog Yaratish (Create)'}</span>
-              </div>
-              <button onClick={() => { setIsModalOpen(false); revokeObjectUrl(); }} className="p-1 text-[#aab8b0] hover:text-[#eaf2ec]"><X className="w-5 h-5" /></button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+        <ExpandableModal
+          onClose={handleCloseModal}
+          icon={<BookOpen className="w-4 h-4" />}
+          title={editingBlog ? 'Blogni Yangilash (Update)' : 'Yangi Blog Yaratish (Create)'}
+          widthClass="max-w-3xl"
+          persistKey="blog"
+        >
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div>
-                <label className="text-xs font-mono text-[#aab8b0] block mb-1">Sarlavha (Title) *</label>
-                <input type="text" required placeholder="Masalan: Next.js 15 App Router Qo'llanmasi" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-3.5 py-2 bg-[#131b16] border border-[#213028] rounded-lg text-sm text-[#eaf2ec] focus:outline-none focus:border-[#49f08a]/60 font-sans" />
+                <label className="text-xs font-mono text-text-1 block mb-1">Sarlavha (Title) *</label>
+                <input type="text" required placeholder="Masalan: Next.js 15 App Router Qo'llanmasi" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} className="w-full px-3.5 py-2 bg-bg-2 border border-line rounded-lg text-sm text-text-0 focus:outline-none focus:border-accent/60 font-sans" />
               </div>
 
               <div>
-                <label className="text-xs font-mono text-[#aab8b0] block mb-1">Tavsif (Description)</label>
-                <textarea rows={2} placeholder="Maqolaning qisqacha tavsifi (description)..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3.5 py-2 bg-[#131b16] border border-[#213028] rounded-lg text-sm text-[#eaf2ec] focus:outline-none focus:border-[#49f08a]/60 font-sans" />
+                <label className="text-xs font-mono text-text-1 block mb-1">Tavsif (Description)</label>
+                <textarea rows={2} placeholder="Maqolaning qisqacha tavsifi (description)..." value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full px-3.5 py-2 bg-bg-2 border border-line rounded-lg text-sm text-text-0 focus:outline-none focus:border-accent/60 font-sans" />
               </div>
 
               <div>
-                <label className="text-xs font-mono text-[#aab8b0] block mb-1">
+                <label className="text-xs font-mono text-text-1 block mb-1">
                   Kontent (Content)
                 </label>
 
                 <RichTextEditor
+                  onUploadingChange={setImagesUploading}
+                  onImageUploaded={(id) => seenImageIds.current.add(id)}
+                  onImageRemoved={(id) => seenImageIds.current.delete(id)}
+                  protectedImageIds={editingBlog ? collectImageFileIds((editingBlog as any).content_uz || editingBlog.content) : []}
                   value={formData.content}
                   onChange={(content) =>
                     setFormData((prev) => ({
@@ -496,86 +638,85 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
 
               {!formData.isPrivate ? (
                 <div className="space-y-2">
-                  <label className="text-xs font-mono text-[#aab8b0] block mb-1">Rasm Yuklash (Public blog uchun)</label>
-                  <input type="file" accept="image/*" onChange={handleImageFileChange} className="w-full text-xs text-[#aab8b0] file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-[#182119] file:text-[#49f08a] file:border-[#1f8a52]/40 hover:file:bg-[#1f8a52] hover:file:text-[#eaf2ec] cursor-pointer" />
+                  <label className="text-xs font-mono text-text-1 block mb-1">Rasm Yuklash (Public blog uchun)</label>
+                  <input type="file" accept="image/*" onChange={handleImageFileChange} className="w-full text-xs text-text-1 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-bg-3 file:text-accent file:border-accent-dim/40 hover:file:bg-accent-dim hover:file:text-text-0 cursor-pointer" />
                   {(imagePreview || typeof formData.image === 'string') && (
-                    <div className="mt-2 p-2 bg-[#131b16] border border-[#213028] rounded-xl flex flex-col gap-1.5">
-                      <span className="text-[10px] font-mono text-[#49f08a] flex items-center gap-1"><Eye className="w-3 h-3" /><span>Rasm Preview:</span></span>
-                      <div className="relative h-36 w-full rounded-lg overflow-hidden bg-[#080b09]">
+                    <div className="mt-2 p-2 bg-bg-2 border border-line rounded-xl flex flex-col gap-1.5">
+                      <span className="text-[10px] font-mono text-accent flex items-center gap-1"><Eye className="w-3 h-3" /><span>Rasm Preview:</span></span>
+                      <div className="relative h-36 w-full rounded-lg overflow-hidden bg-bg-0">
                         <img src={imagePreview || (formData.image as string)} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="p-3 bg-[#ff6b6b]/10 border border-[#ff6b6b]/30 rounded-xl text-xs font-mono text-[#ff6b6b]"><strong>Eslatma:</strong> Maxfiy blog (visible: PRIVATE) yaratilganda image/rasm parametr yuborilmaydi.</div>
+                <div className="p-3 bg-danger/10 border border-danger/30 rounded-xl text-xs font-mono text-danger"><strong>Eslatma:</strong> Maxfiy blog (visible: PRIVATE) yaratilganda image/rasm parametr yuborilmaydi.</div>
               )}
 
               <div className="flex items-center gap-3 pt-2">
-                <input type="checkbox" id="isPrivate" checked={formData.isPrivate} onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })} className="w-4 h-4 rounded bg-[#131b16] border-[#213028] text-[#49f08a] focus:ring-[#49f08a]" />
-                <label htmlFor="isPrivate" className="text-xs text-[#eaf2ec] font-mono cursor-pointer flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-[#ff6b6b]" /><span>Maxfiy blog sifatida saqlash (visible: PRIVATE)</span></label>
+                <input type="checkbox" id="isPrivate" checked={formData.isPrivate} onChange={(e) => setFormData({ ...formData, isPrivate: e.target.checked })} className="w-4 h-4 rounded bg-bg-2 border-line text-accent focus:ring-accent" />
+                <label htmlFor="isPrivate" className="text-xs text-text-0 font-mono cursor-pointer flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-danger" /><span>Maxfiy blog sifatida saqlash (visible: PRIVATE)</span></label>
               </div>
 
               {!editingBlog && !formData.isPrivate && (
                 <div className="flex flex-wrap items-center gap-4 pt-1">
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" id="postToTelegram" checked={formData.postToTelegram} onChange={(e) => setFormData({ ...formData, postToTelegram: e.target.checked })} className="w-4 h-4 rounded bg-[#131b16] border-[#213028] text-[#49f08a] focus:ring-[#49f08a]" />
-                    <label htmlFor="postToTelegram" className="text-xs text-[#eaf2ec] font-mono cursor-pointer">Telegram&apos;ga post qilish</label>
+                    <input type="checkbox" id="postToTelegram" checked={formData.postToTelegram} onChange={(e) => setFormData({ ...formData, postToTelegram: e.target.checked })} className="w-4 h-4 rounded bg-bg-2 border-line text-accent focus:ring-accent" />
+                    <label htmlFor="postToTelegram" className="text-xs text-text-0 font-mono cursor-pointer">Telegram&apos;ga post qilish</label>
                   </div>
                   <div className="flex items-center gap-2">
-                    <input type="checkbox" id="postToLinkedIn" checked={formData.postToLinkedIn} onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })} className="w-4 h-4 rounded bg-[#131b16] border-[#213028] text-[#49f08a] focus:ring-[#49f08a]" />
-                    <label htmlFor="postToLinkedIn" className="text-xs text-[#eaf2ec] font-mono cursor-pointer">LinkedIn&apos;ga post qilish</label>
+                    <input type="checkbox" id="postToLinkedIn" checked={formData.postToLinkedIn} onChange={(e) => setFormData({ ...formData, postToLinkedIn: e.target.checked })} className="w-4 h-4 rounded bg-bg-2 border-line text-accent focus:ring-accent" />
+                    <label htmlFor="postToLinkedIn" className="text-xs text-text-0 font-mono cursor-pointer">LinkedIn&apos;ga post qilish</label>
                   </div>
                 </div>
               )}
 
-              <div className="pt-4 border-t border-[#213028] flex items-center justify-end gap-3">
-                <button type="button" onClick={() => { setIsModalOpen(false); revokeObjectUrl(); }} className="px-4 py-2 rounded-xl bg-[#131b16] text-[#aab8b0] hover:bg-[#182119] hover:text-[#eaf2ec] text-xs font-semibold transition-colors">Bekor qilish</button>
-                <button type="submit" disabled={submitting} className="px-5 py-2 rounded-xl bg-gradient-to-r from-[#06b6d4] to-[#7dd3fc] text-[#02201f] font-bold text-xs flex items-center gap-2 shadow-lg transition-colors disabled:opacity-50">
-                  {submitting ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-[#02201f] border-t-transparent" /> : <Save className="w-4 h-4" />}
+              <div className="pt-4 border-t border-line flex items-center justify-end gap-3">
+                <button type="button" onClick={handleCloseModal} className="px-4 py-2 rounded-xl bg-bg-2 text-text-1 hover:bg-bg-3 hover:text-text-0 text-xs font-semibold transition-colors">Bekor qilish</button>
+                <button type="submit" disabled={submitting || imagesUploading} title={imagesUploading ? "Rasm yuklanmoqda..." : undefined} className="px-5 py-2 disabled:opacity-50 rounded-xl bg-accent text-on-accent hover:opacity-90 font-bold text-xs flex items-center gap-2 shadow-sm transition-colors disabled:opacity-50">
+                  {submitting ? <span className="animate-spin rounded-full h-4 w-4 border-2 border-line border-t-transparent" /> : <Save className="w-4 h-4" />}
                   <span>{editingBlog ? 'Yangilashni Saqlash' : 'Chop Etish'}</span>
                 </button>
               </div>
             </form>
-          </div>
-        </div>
+        </ExpandableModal>
       )}
 
       {statsBlog && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#0d1310] border border-[#213028] rounded-2xl w-full max-w-md overflow-hidden shadow-2xl my-8">
-            <div className="p-5 border-b border-[#213028] flex items-center justify-between bg-[#080b09]">
-              <div className="flex items-center gap-2 text-[#49f08a] font-mono text-sm font-bold">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-bg-1 border border-line rounded-2xl w-full max-w-md overflow-hidden shadow-sm my-8">
+            <div className="p-5 border-b border-line flex items-center justify-between bg-bg-0">
+              <div className="flex items-center gap-2 text-accent font-mono text-sm font-bold">
                 <BarChart3 className="w-4 h-4" />
                 <span>Ko&apos;rishlar statistikasi</span>
               </div>
-              <button onClick={() => setStatsBlog(null)} className="p-1 text-[#aab8b0] hover:text-[#eaf2ec]"><X className="w-5 h-5" /></button>
+              <button onClick={() => setStatsBlog(null)} className="p-1 text-text-1 hover:text-text-0"><X className="w-5 h-5" /></button>
             </div>
 
             <div className="p-6 space-y-5">
-              <p className="text-sm text-[#cfe4db] line-clamp-1">
+              <p className="text-sm text-text-0 line-clamp-1">
                 {(statsBlog as any).title_uz || statsBlog.title}
               </p>
 
               {statsLoading ? (
                 <div className="py-8 flex items-center justify-center">
-                  <span className="animate-spin rounded-full h-6 w-6 border-2 border-[#49f08a] border-t-transparent" />
+                  <span className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent" />
                 </div>
               ) : statsData ? (
                 <>
-                  <div className="flex items-center gap-3 p-4 rounded-xl bg-[#131b16] border border-[#213028]">
-                    <Eye className="w-6 h-6 text-[#49f08a]" />
+                  <div className="flex items-center gap-3 p-4 rounded-xl bg-bg-2 border border-line">
+                    <Eye className="w-6 h-6 text-accent" />
                     <div>
-                      <div className="text-2xl font-bold text-[#eaf2ec] font-mono leading-none">{statsData.views}</div>
-                      <div className="text-[11px] text-[#71847a] mt-1">jami ko&apos;rishlar</div>
+                      <div className="text-2xl font-bold text-text-0 font-mono leading-none">{statsData.views}</div>
+                      <div className="text-[11px] text-text-2 mt-1">jami ko&apos;rishlar</div>
                     </div>
                   </div>
 
                   <div>
-                    <div className="text-[10px] font-mono text-[#71847a] uppercase tracking-widest mb-2">Qayerdan kirishdi</div>
+                    <div className="text-[10px] font-mono text-text-2 uppercase tracking-widest mb-2">Qayerdan kirishdi</div>
 
                     {statsData.sources.length === 0 ? (
-                      <p className="text-xs text-[#71847a]">Hali ma&apos;lumot yo&apos;q.</p>
+                      <p className="text-xs text-text-2">Hali ma&apos;lumot yo&apos;q.</p>
                     ) : (
                       <div className="space-y-2">
                         {statsData.sources.map((s) => {
@@ -583,11 +724,11 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
                           return (
                             <div key={s.source}>
                               <div className="flex items-center justify-between text-xs mb-1">
-                                <span className="text-[#cfe4db] font-mono">{sourceLabel(s.source)}</span>
-                                <span className="text-[#aab8b0] font-mono">{s.count} ({percentage}%)</span>
+                                <span className="text-text-0 font-mono">{sourceLabel(s.source)}</span>
+                                <span className="text-text-1 font-mono">{s.count} ({percentage}%)</span>
                               </div>
-                              <div className="h-1.5 rounded-full bg-[#131b16] overflow-hidden">
-                                <div className="h-full bg-[#49f08a]" style={{ width: `${percentage}%` }} />
+                              <div className="h-1.5 rounded-full bg-bg-2 overflow-hidden">
+                                <div className="h-full bg-accent" style={{ width: `${percentage}%` }} />
                               </div>
                             </div>
                           );
@@ -595,7 +736,7 @@ export const BlogManager: React.FC<BlogManagerProps> = ({ searchQuery = '' }) =>
                       </div>
                     )}
 
-                    <p className="text-[10px] text-[#71847a] mt-4">
+                    <p className="text-[10px] text-text-2 mt-4">
                       Kesh orqali har 10 daqiqada yangilanadi — so&apos;nggi ko&apos;rishlar hali bu yerda bo&apos;lmasligi mumkin.
                     </p>
                   </div>

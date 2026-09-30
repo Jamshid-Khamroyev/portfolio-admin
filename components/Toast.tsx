@@ -32,9 +32,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         richColors
         toastOptions={{
           style: {
-            background: '#0d1310',
-            border: '1px solid #213028',
-            color: '#eaf2ec',
+            background: 'var(--bg-1)',
+            border: '1px solid var(--line)',
+            color: 'var(--text-0)',
           },
         }}
       />
