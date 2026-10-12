@@ -163,6 +163,10 @@ export const PushSender: React.FC = () => {
   const [url, setUrl] = useState('');
   const [image, setImage] = useState('');
   const [previewLocale, setPreviewLocale] = useState<PreviewLocale>('uz');
+  const [sourceLang, setSourceLang] = useState<PreviewLocale>('uz');
+
+  /* Obunachilar bor, lekin matn tilidan boshqa tillar — faqat shularga tarjima qilinadi */
+  const targets = ['uz', 'ru', 'en'].filter((l) => l !== sourceLang && (stats?.byLocale?.[l] ?? 0) > 0);
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -192,11 +196,13 @@ export const PushSender: React.FC = () => {
         body: body.trim() || undefined,
         url: url.trim() || undefined,
         image: image.trim() || undefined,
+        sourceLang,
       });
       showToast(
         'Bildirishnoma yuborildi',
         'success',
-        `${res.sent}/${res.total} yetkazildi · ${res.failed} xato · ${res.removed} eskirgan obuna o'chirildi`
+        `${res.sent}/${res.total} yetkazildi · ${res.failed} xato · ${res.removed} eskirgan obuna o'chirildi` +
+          (res.translatedTo?.length ? ` · tarjima: ${res.translatedTo.join(', ').toUpperCase()}` : ' · tarjima kerak bo\'lmadi')
       );
       setTitle('');
       setBody('');
@@ -273,6 +279,29 @@ export const PushSender: React.FC = () => {
             placeholder="https://.../cover.jpg"
           />
         </label>
+
+        <div className="space-y-1.5">
+          <span className="text-xs font-mono text-text-1">Matn tili</span>
+          <div className="flex gap-1.5">
+            {(['uz', 'ru', 'en'] as const).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setSourceLang(l)}
+                className={`px-3 py-1 rounded-sm text-xs font-mono uppercase border ${
+                  sourceLang === l ? 'border-accent text-accent' : 'border-line text-text-2 hover:text-text-1'
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+          <span className="block text-[10px] font-mono text-text-2">
+            {targets.length
+              ? `Obunachilar tillariga qarab avtomatik tarjima qilinadi: ${targets.map((l) => l.toUpperCase()).join(', ')}`
+              : "Barcha obunachilar shu tilda — tarjima qilinmaydi."}
+          </span>
+        </div>
 
         <button
           type="submit"

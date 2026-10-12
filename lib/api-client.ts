@@ -224,7 +224,7 @@ export const pushApi = {
     const res = await apiClient.get('/api/push/send');
     return res.data;
   },
-  send: async (data: { title: string; body?: string; url?: string; image?: string }) => {
+  send: async (data: { title: string; body?: string; url?: string; image?: string; sourceLang?: string }) => {
     const res = await apiClient.post('/api/push/send', data);
     return res.data;
   },
