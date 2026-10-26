@@ -6,7 +6,6 @@ import {
   Activity,
   Calendar,
   Clock,
-  Globe,
   Send,
   Github,
   Linkedin,
@@ -15,24 +14,26 @@ import {
   BarChart3,
   ExternalLink,
   Timer,
+  PenLine,
+  FolderPlus,
+  Bell,
+  MessageSquare,
 } from 'lucide-react';
 import { VisitorsTable } from '@/components/VisitorsTable';
 import {
   ResponsiveContainer,
-  AreaChart,
-  Area,
   BarChart,
   Bar,
   XAxis,
   YAxis,
   Tooltip,
-  CartesianGrid,
   PieChart,
   Pie,
   Cell,
 } from 'recharts';
 import { reviewApi } from '@/lib/api-client';
 import { UsageStats, SocialLinks } from '@/lib/data-store';
+import { CARD, Segmented } from '@/components/ui';
 
 const DEFAULT_SOCIALS: SocialLinks = {
   github: "https://github.com/Jamshid-Khamroyev",
@@ -49,19 +50,10 @@ const withProtocol = (url?: string) =>
 const tooltipStyle: React.CSSProperties = {
   backgroundColor: 'var(--bg-1)',
   border: '1px solid var(--line)',
-  borderRadius: '0.75rem',
+  borderRadius: '6px',
   color: 'var(--text-0)',
   fontSize: '12px',
-  boxShadow: '0 6px 20px rgba(0,0,0,0.12)',
-};
-
-const CARD = 'rounded-2xl bg-bg-1 border border-line';
-
-type Tone = 'accent' | 'info' | 'warn';
-const TONES: Record<Tone, { icon: string; color: string }> = {
-  accent: { icon: 'bg-accent/12 text-accent', color: 'var(--accent)' },
-  info: { icon: 'bg-info/12 text-info', color: 'var(--info)' },
-  warn: { icon: 'bg-warn/12 text-warn', color: 'var(--warn)' },
+  boxShadow: 'none',
 };
 
 interface KpiProps {
@@ -69,73 +61,43 @@ interface KpiProps {
   value: string;
   hint: string;
   icon: React.ElementType;
-  tone: Tone;
-  spark: number[];
 }
 
-const KpiCard: React.FC<KpiProps> = ({ label, value, hint, icon: Icon, tone, spark }) => {
-  const t = TONES[tone];
-  const gid = `spark-${tone}-${label.replace(/\W/g, '')}`;
-  const data = spark.map((v, i) => ({ i, v }));
-  return (
-    <div className={`${CARD} p-5 flex flex-col justify-between gap-4 hover:border-accent-dim/60 transition-colors`}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-[13px] text-text-1">{label}</p>
-          <p className="mt-1.5 text-[1.7rem] leading-none font-bold text-text-0 tracking-tight tabular-nums">{value}</p>
-        </div>
-        <div className={`p-2.5 rounded-xl shrink-0 ${t.icon}`}>
-          <Icon className="w-[18px] h-[18px]" />
-        </div>
-      </div>
-      <div className="flex items-end justify-between gap-3">
-        <p className="text-[11px] text-text-2 leading-snug">{hint}</p>
-        {data.length > 1 && (
-          <div className="h-9 w-24 shrink-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={t.color} stopOpacity={0.35} />
-                    <stop offset="100%" stopColor={t.color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area type="monotone" dataKey="v" stroke={t.color} strokeWidth={1.75} fill={`url(#${gid})`} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        )}
-      </div>
+/* Desktop KPI kartasi: yorliq, katta raqam, ikonka, izoh (oldingi davr ma'lumoti yo'q — delta ko'rsatilmaydi) */
+const KpiCard: React.FC<KpiProps> = ({ label, value, hint, icon: Icon }) => (
+  <div className={`${CARD} p-5 flex flex-col gap-3`}>
+    <div className="flex items-center justify-between gap-3">
+      <p className="text-[13px] text-text-1">{label}</p>
+      <Icon className="w-4 h-4 shrink-0 text-text-2" />
     </div>
-  );
-};
-
-const Segmented = <T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: { id: T; label: string; icon?: React.ElementType }[];
-}) => (
-  <div className="flex items-center gap-1 p-1 bg-bg-2 rounded-xl border border-line">
-    {options.map(({ id, label, icon: Icon }) => (
-      <button
-        key={id}
-        onClick={() => onChange(id)}
-        className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
-          value === id ? 'bg-bg-1 text-accent shadow-sm border border-line' : 'text-text-1 hover:text-text-0 border border-transparent'
-        }`}
-      >
-        {Icon && <Icon className="w-3.5 h-3.5" />}
-        {label}
-      </button>
-    ))}
+    <p className="font-display text-[30px] leading-none font-semibold text-text-0 tracking-tight tabular-nums">{value}</p>
+    <p className="font-mono text-[11px] text-text-2">{hint}</p>
   </div>
 );
 
-export const UsageDashboard: React.FC = () => {
+/* Mobil 2×2 KPI kartasi */
+const MiniKpi: React.FC<KpiProps> = ({ label, value, hint, icon: Icon }) => (
+  <div className={`${CARD} p-4 flex flex-col gap-2.5`}>
+    <div className="flex items-center justify-between gap-2">
+      <p className="text-[12px] text-text-1 truncate">{label}</p>
+      <Icon className="h-4 w-4 shrink-0 text-text-2" />
+    </div>
+    <div className="min-w-0">
+      <p className="font-display text-[22px] leading-tight font-semibold text-text-0 tabular-nums truncate">{value}</p>
+      {hint && <p className="font-mono text-[10px] text-text-2 truncate">{hint}</p>}
+    </div>
+  </div>
+);
+
+const fmtCompact = (n: number) =>
+  n >= 10000 ? `${(n / 1000).toFixed(n >= 100000 ? 0 : 1).replace(/\.0$/, '')}k` : n.toLocaleString();
+
+interface UsageDashboardProps {
+  /** Tezkor amallar uchun: bo'limga o'tish (create=true — yaratish oynasi ochiladi) */
+  onNavigate?: (tab: string, create?: boolean) => void;
+}
+
+export const UsageDashboard: React.FC<UsageDashboardProps> = ({ onNavigate }) => {
   const [stats, setStats] = useState<UsageStats>();
   const [socials] = useState<SocialLinks>(DEFAULT_SOCIALS);
   const [loading, setLoading] = useState<boolean>(true);
@@ -173,24 +135,46 @@ export const UsageDashboard: React.FC = () => {
 
   if (loading || !stats) {
     return (
-      <div className="p-6 space-y-6 animate-pulse max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="px-4 lg:px-8 space-y-4 lg:space-y-6 animate-pulse">
+        <div className="h-44 lg:hidden bg-bg-1 rounded-md border border-line" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-36 bg-bg-2 rounded-2xl border border-line" />
+            <div key={i} className="h-32 bg-bg-1 rounded-md border border-line" />
           ))}
         </div>
-        <div className="h-80 bg-bg-2 rounded-2xl border border-line" />
+        <div className="h-80 bg-bg-1 rounded-md border border-line" />
       </div>
     );
   }
 
-  const weekSpark = stats.weeklyChart.map((d: any) => d.total);
-  const monthSpark = stats.monthlyChart.map((d: any) => d.total);
-  const durSpark = stats.weeklyChart.map((d: any) => d.durationHours || 0);
+  const monthSpark = stats.monthlyChart.map((d: any) => Number(d.total) || 0);
+  const sparkMax = Math.max(1, ...monthSpark);
+
+  const kpis: KpiProps[] = [
+    { label: 'Jami kirishlar', value: stats.totalVisits.toLocaleString(), hint: 'Barcha vaqt davomida', icon: Activity },
+    { label: 'Haftalik kirishlar', value: stats.weeklyVisits.toLocaleString(), hint: 'Oxirgi 7 kun', icon: Calendar },
+    { label: 'Oylik kirishlar', value: stats.monthlyVisits.toLocaleString(), hint: 'Oxirgi 30 kun', icon: BarChart3 },
+    { label: 'Foydalanish vaqti', value: String(stats.totalUsageTime), hint: `O'rtacha sessiya: ${stats.avgUsageTime}`, icon: Clock },
+  ];
+
+  /* Mobil 2×2: hero'dan tashqari uchta KPI + o'rtacha sessiya (mavjud ma'lumot) */
+  const mobileKpis: KpiProps[] = [
+    kpis[1],
+    kpis[2],
+    { ...kpis[3], hint: '' },
+    { label: "O'rtacha sessiya", value: String(stats.avgUsageTime), hint: '', icon: Timer },
+  ];
+
+  const quickActions = [
+    { label: 'Maqola', icon: PenLine, onClick: () => onNavigate?.('blog', true) },
+    { label: 'Loyiha', icon: FolderPlus, onClick: () => onNavigate?.('projects', true) },
+    { label: 'Push', icon: Bell, onClick: () => onNavigate?.('push') },
+    { label: 'Chatlar', icon: MessageSquare, onClick: () => onNavigate?.('chats') },
+  ];
 
   const split = [
-    { name: 'Web', value: stats.webUsersCount, color: 'var(--accent)', icon: Globe, hint: 'Brauzer orqali' },
-    { name: 'Telegram', value: stats.tmeUsersCount, color: 'var(--info)', icon: Send, hint: 'MiniApp va bot' },
+    { name: 'Web', value: stats.webUsersCount, color: 'var(--accent)', hint: 'Brauzer orqali' },
+    { name: 'Telegram', value: stats.tmeUsersCount, color: 'var(--info)', hint: 'MiniApp va bot' },
   ];
   const splitTotal = split.reduce((a, b) => a + b.value, 0) || 1;
 
@@ -203,49 +187,63 @@ export const UsageDashboard: React.FC = () => {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* 1. Asosiy ko'rsatkichlar */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label="Jami kirishlar"
-          value={stats.totalVisits.toLocaleString()}
-          hint="Barcha vaqt davomida"
-          icon={Activity}
-          tone="accent"
-          spark={monthSpark}
-        />
-        <KpiCard
-          label="Haftalik kirishlar"
-          value={stats.weeklyVisits.toLocaleString()}
-          hint="Oxirgi 7 kun"
-          icon={Calendar}
-          tone="info"
-          spark={weekSpark}
-        />
-        <KpiCard
-          label="Oylik kirishlar"
-          value={stats.monthlyVisits.toLocaleString()}
-          hint="Oxirgi 30 kun"
-          icon={BarChart3}
-          tone="warn"
-          spark={monthSpark}
-        />
-        <KpiCard
-          label="Foydalanish vaqti"
-          value={String(stats.totalUsageTime)}
-          hint={`O'rtacha sessiya: ${stats.avgUsageTime}`}
-          icon={Clock}
-          tone="accent"
-          spark={durSpark}
-        />
+    <div className="px-4 lg:px-8 space-y-4 lg:space-y-6">
+      {/* ── Mobil: asosiy KPI (hero) ── */}
+      <div className={`lg:hidden ${CARD} p-5`}>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-[14px] text-text-1">{kpis[0].label}</p>
+          <span className="font-mono text-[11px] text-text-2">{kpis[0].hint}</span>
+        </div>
+        <p className="mt-3 font-display text-[40px] leading-none font-semibold tracking-tight text-text-0 tabular-nums">
+          {kpis[0].value}
+        </p>
+        {monthSpark.length > 1 && (
+          <div className="mt-5 flex h-14 items-end gap-1.5" aria-hidden>
+            {monthSpark.map((v, i) => (
+              <span
+                key={i}
+                className={`flex-1 rounded-[2px] ${i === monthSpark.length - 1 ? 'bg-accent' : 'bg-text-2/30'}`}
+                style={{ height: `${Math.max(8, (v / sparkMax) * 100)}%` }}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* 2. Grafik + foydalanuvchilar taqsimoti */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className={`lg:col-span-2 ${CARD} p-6 space-y-4`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* ── Mobil: 2×2 KPI ── */}
+      <div className="lg:hidden grid grid-cols-2 gap-3">
+        {mobileKpis.map((k) => (
+          <MiniKpi key={k.label} {...k} />
+        ))}
+      </div>
+
+      {/* ── Mobil: tezkor amallar ── */}
+      {onNavigate && (
+        <div className="lg:hidden grid grid-cols-4 gap-2 pt-1">
+          {quickActions.map(({ label, icon: Icon, onClick }) => (
+            <button key={label} type="button" onClick={onClick} className="flex flex-col items-center gap-2 py-1">
+              <span className="grid h-14 w-14 place-items-center rounded-sm border border-line bg-bg-1 text-text-1 shadow-[var(--shadow-card)] active:scale-95 transition-transform">
+                <Icon className="h-[22px] w-[22px]" />
+              </span>
+              <span className="text-[12px] text-text-1">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* ── Desktop: KPI qatori ── */}
+      <div className="hidden lg:grid grid-cols-4 gap-4">
+        {kpis.map((k) => (
+          <KpiCard key={k.label} {...k} />
+        ))}
+      </div>
+
+      {/* Grafik + foydalanuvchilar taqsimoti */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6">
+        <div className={`lg:col-span-2 ${CARD} p-4 lg:p-6 space-y-4`}>
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3">
             <div>
-              <h3 className="text-base font-semibold text-text-0">
+              <h3 className="font-display text-[17px] font-semibold text-text-0">
                 {chartMetric === 'traffic' ? 'Kirishlar oqimi' : 'Foydalanish vaqti'}
               </h3>
               <p className="text-xs text-text-1 mt-0.5">
@@ -276,67 +274,57 @@ export const UsageDashboard: React.FC = () => {
 
           {chartMetric === 'traffic' && (
             <div className="flex items-center gap-4 text-xs text-text-1">
-              <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-accent" />Web</span>
-              <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-full bg-info" />Telegram</span>
+              <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-[2px] bg-accent" />Web</span>
+              <span className="inline-flex items-center gap-1.5"><i className="w-2.5 h-2.5 rounded-[2px] bg-info" />Telegram</span>
             </div>
           )}
 
-          <div className="h-72 w-full">
+          <div className="h-60 lg:h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
               {chartMetric === 'traffic' ? (
-                <AreaChart data={activeChartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="gWeb" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--accent)" stopOpacity={0.3} />
-                      <stop offset="100%" stopColor="var(--accent)" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="gTme" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--info)" stopOpacity={0.25} />
-                      <stop offset="100%" stopColor="var(--info)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                <BarChart data={activeChartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
                   <XAxis dataKey="label" stroke="var(--text-2)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-2)" fontSize={11} tickLine={false} axisLine={false} />
-                  <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'var(--line)' }} />
-                  <Area type="monotone" dataKey="web" name="Web" stroke="var(--accent)" strokeWidth={2.25} fill="url(#gWeb)" isAnimationActive={false} />
-                  <Area type="monotone" dataKey="tme" name="Telegram" stroke="var(--info)" strokeWidth={2.25} fill="url(#gTme)" isAnimationActive={false} />
-                </AreaChart>
+                  <YAxis hide />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'var(--bg-3)', opacity: 0.5 }} />
+                  <Bar dataKey="web" name="Web" stackId="v" fill="var(--accent)" radius={[0, 0, 2, 2]} maxBarSize={40} isAnimationActive={false} />
+                  <Bar dataKey="tme" name="Telegram" stackId="v" fill="var(--info)" radius={[2, 2, 0, 0]} maxBarSize={40} isAnimationActive={false} />
+                </BarChart>
               ) : (
-                <BarChart data={activeChartData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--line)" vertical={false} />
+                <BarChart data={activeChartData} margin={{ top: 8, right: 0, left: 0, bottom: 0 }} barCategoryGap="22%">
                   <XAxis dataKey="label" stroke="var(--text-2)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-2)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis hide />
                   <Tooltip
                     contentStyle={tooltipStyle}
                     cursor={{ fill: 'var(--bg-3)', opacity: 0.5 }}
                     formatter={(value: any) => [`${value} soat`, 'Foydalanish vaqti']}
                   />
-                  <Bar dataKey="duration" name="Soat" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={38} isAnimationActive={false} />
+                  <Bar dataKey="duration" name="Soat" fill="var(--accent)" radius={[2, 2, 2, 2]} maxBarSize={40} isAnimationActive={false} />
                 </BarChart>
               )}
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Foydalanuvchilar taqsimoti */}
-        <div className={`${CARD} p-6 flex flex-col`}>
+        {/* Foydalanuvchilar taqsimoti (platformalar) */}
+        <div className={`${CARD} p-4 lg:p-6 flex flex-col`}>
           <div>
-            <h3 className="text-base font-semibold text-text-0">Foydalanuvchilar</h3>
+            <h3 className="font-display text-[17px] font-semibold text-text-0">Foydalanuvchilar</h3>
             <p className="text-xs text-text-1 mt-0.5">Platformalar bo&apos;yicha taqsimot</p>
           </div>
 
-          <div className="relative h-44 my-4">
+          <div className="relative h-48 my-4">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={split}
                   dataKey="value"
-                  innerRadius="68%"
-                  outerRadius="92%"
-                  paddingAngle={3}
+                  innerRadius="72%"
+                  outerRadius="96%"
+                  paddingAngle={2}
                   stroke="none"
-                  cornerRadius={6}
+                  cornerRadius={2}
+                  startAngle={90}
+                  endAngle={-270}
                   isAnimationActive={false}
                 >
                   {split.map((s) => (
@@ -347,29 +335,26 @@ export const UsageDashboard: React.FC = () => {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <Users className="w-4 h-4 text-text-2 mb-1" />
-              <span className="text-2xl font-bold text-text-0 tabular-nums leading-none">
-                {stats.totalUsersCount.toLocaleString()}
+              <span className="font-display text-[28px] font-semibold text-text-0 tabular-nums leading-none">
+                {fmtCompact(stats.totalUsersCount)}
               </span>
-              <span className="text-[11px] text-text-2 mt-1">jami</span>
+              <span className="font-mono text-[11px] text-text-2 mt-1">jami</span>
             </div>
           </div>
 
-          <div className="space-y-2.5 mt-auto">
+          <div className="mt-auto divide-y divide-line">
             {split.map((s) => {
-              const Icon = s.icon;
               const pct = Math.round((s.value / splitTotal) * 100);
               return (
-                <div key={s.name} className="flex items-center gap-3 p-3 rounded-xl bg-bg-2 border border-line">
-                  <div className="p-2 rounded-lg bg-bg-1 border border-line" style={{ color: s.color }}>
-                    <Icon className="w-4 h-4" />
-                  </div>
+                <div key={s.name} className="flex items-center gap-3 py-2.5">
+                  <i className="h-2.5 w-2.5 shrink-0 rounded-[2px]" style={{ background: s.color }} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-text-0">{s.name}</p>
+                    <p className="text-sm text-text-0">{s.name}</p>
                     <p className="text-[11px] text-text-2">{s.hint}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-text-0 tabular-nums">{s.value.toLocaleString()}</p>
-                    <p className="text-[11px] text-text-2 tabular-nums">{pct}%</p>
+                    <p className="font-mono text-[11px] text-text-2 tabular-nums">{pct}%</p>
                   </div>
                 </div>
               );
@@ -378,60 +363,59 @@ export const UsageDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Eng ko'p bajarilgan ishlar */}
-      {stats.topTasks.length > 0 && (
-        <div className={`${CARD} p-6`}>
-          <div className="mb-5">
-            <h3 className="text-base font-semibold text-text-0">Eng ko&apos;p bajarilgan ishlar</h3>
-            <p className="text-xs text-text-1 mt-0.5">Foydalanuvchilar faolligi bo&apos;yicha</p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
-            {stats.topTasks.map((item, idx) => (
-              <div key={idx} className="space-y-2">
-                <div className="flex items-center justify-between gap-3 text-sm">
-                  <span className="text-text-0 truncate">{item.task}</span>
-                  <span className="text-text-1 tabular-nums shrink-0">
-                    <b className="text-accent font-semibold">{item.percentage}%</b>
-                    <span className="text-text-2 text-xs"> · {item.count.toLocaleString()}</span>
-                  </span>
-                </div>
-                <div className="w-full h-2 bg-bg-3 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-accent rounded-full"
-                    style={{ width: `${Math.min(100, item.percentage)}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Tashrif buyuruvchilar + eng ko'p bajarilgan ishlar */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:gap-6 items-start">
+        <div className={`${CARD} overflow-hidden ${stats.topTasks.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'}`}>
+          <VisitorsTable />
         </div>
-      )}
 
-      {/* 4. Tashrif buyuruvchilar jadvali */}
-      <div className={`${CARD} overflow-hidden`}>
-        <VisitorsTable />
+        {stats.topTasks.length > 0 && (
+          <div className={`${CARD} p-4 lg:p-6`}>
+            <div className="mb-4">
+              <h3 className="font-display text-[17px] font-semibold text-text-0">Eng ko&apos;p bajarilgan ishlar</h3>
+              <p className="text-xs text-text-1 mt-0.5">Foydalanuvchilar faolligi bo&apos;yicha</p>
+            </div>
+            <div className="space-y-4">
+              {stats.topTasks.map((item, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-[13px]">
+                    <span className="text-text-0 truncate">{item.task}</span>
+                    <span className="font-mono text-[12px] text-text-1 tabular-nums shrink-0">
+                      {item.count.toLocaleString()}
+                      <span className="text-text-2"> · {item.percentage}%</span>
+                    </span>
+                  </div>
+                  <div className="w-full h-1.5 bg-bg-3 rounded-[2px] overflow-hidden">
+                    <div
+                      className="h-full bg-accent rounded-[2px]"
+                      style={{ width: `${Math.min(100, item.percentage)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* 5. Ijtimoiy tarmoqlar */}
-      <div className={`${CARD} p-6`}>
+      {/* Ijtimoiy tarmoqlar */}
+      <div className={`${CARD} p-4 lg:p-6`}>
         <div className="mb-4">
-          <h3 className="text-base font-semibold text-text-0">Ijtimoiy tarmoqlar</h3>
+          <h3 className="font-display text-[17px] font-semibold text-text-0">Ijtimoiy tarmoqlar</h3>
           <p className="text-xs text-text-1 mt-0.5">Portfolioda ko&apos;rsatilgan rasmiy havolalar</p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
           {socialItems.map(({ icon: Icon, label, href }) => (
             <a
               key={label}
               href={href?.startsWith('mailto:') ? href : withProtocol(href)}
               target="_blank"
               rel="noreferrer"
-              className="p-3.5 rounded-xl bg-bg-2 border border-line hover:border-accent-dim/60 flex items-center justify-between text-sm group transition-colors"
+              className="min-h-[48px] px-3.5 rounded-sm bg-bg-2 border border-line hover:border-text-2 flex items-center gap-3 text-sm group transition-colors"
             >
-              <span className="flex items-center gap-2.5 text-text-1 group-hover:text-accent min-w-0">
-                <Icon className="w-4 h-4 shrink-0" />
-                <span className="truncate">{label}</span>
-              </span>
-              <ExternalLink className="w-3.5 h-3.5 text-text-2 group-hover:text-accent shrink-0" />
+              <Icon className="w-4 h-4 shrink-0 text-text-2 group-hover:text-text-0 transition-colors" />
+              <span className="flex-1 truncate text-text-0">{label}</span>
+              <ExternalLink className="w-3.5 h-3.5 text-text-2 group-hover:text-text-0 shrink-0" />
             </a>
           ))}
         </div>

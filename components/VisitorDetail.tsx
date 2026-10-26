@@ -1,18 +1,40 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Clock, Globe, Send, Zap, CalendarClock, Layers } from 'lucide-react';
+import {
+  ArrowLeft,
+  Clock,
+  Zap,
+  CalendarClock,
+  Layers,
+  BookOpen,
+  Bot,
+  Download,
+  FolderGit2,
+  Home,
+  MousePointerClick,
+} from 'lucide-react';
 import {
   Visitor,
-  ActionBadges,
   SessionRow,
+  SourceTile,
   fetchKnownVisitors,
   fmtDate,
   fmtDuration,
   visitorName,
 } from '@/components/VisitorsTable';
+import { CARD } from '@/components/ui';
 
-const CARD = 'rounded-2xl bg-bg-1 border border-line';
+/* Harakat turiga mos ikonka (faqat ko'rinish uchun — nomlar API'dan keladi) */
+function actionVisual(type: string): { icon: React.ElementType } {
+  const t = type.toLowerCase();
+  if (t.includes('blog') || t.includes('read')) return { icon: BookOpen };
+  if (t.includes('chat') || t.includes('ai')) return { icon: Bot };
+  if (t.includes('cv') || t.includes('download') || t.includes('resume')) return { icon: Download };
+  if (t.includes('project')) return { icon: FolderGit2 };
+  if (t.includes('home') || t.includes('visit') || t.includes('page')) return { icon: Home };
+  return { icon: MousePointerClick };
+}
 
 export const VisitorDetail: React.FC<{ visitorId: string; onBack: () => void }> = ({ visitorId, onBack }) => {
   const [visitor, setVisitor] = useState<Visitor | null>(null);
@@ -44,31 +66,46 @@ export const VisitorDetail: React.FC<{ visitorId: string; onBack: () => void }> 
     return [...map.entries()].map(([type, count]) => ({ type, count })).sort((a, b) => b.count - a.count);
   }, [sessions]);
 
-  const back = (
-    <button
-      onClick={onBack}
-      className="inline-flex items-center gap-1.5 text-sm text-text-1 hover:text-accent transition-colors"
-    >
-      <ArrowLeft className="w-4 h-4" />
-      Foydalanuvchilar ro&apos;yxati
-    </button>
+  /* Orqaga qaytish ilova paneli */
+  const appBar = (title: React.ReactNode, sub?: React.ReactNode, leading?: React.ReactNode) => (
+    <div className="flex items-center gap-3 px-4 pt-[max(16px,env(safe-area-inset-top))] pb-4 lg:px-8 lg:pt-8">
+      <button
+        onClick={onBack}
+        aria-label="Foydalanuvchilar ro'yxati"
+        title="Foydalanuvchilar ro'yxati"
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-sm text-text-0 hover:bg-bg-2 transition-colors"
+      >
+        <ArrowLeft className="h-5 w-5" />
+      </button>
+      {leading}
+      <div className="min-w-0">
+        <h1 className="font-display text-[22px] lg:text-[26px] font-semibold leading-tight text-text-0 truncate">{title}</h1>
+        {sub && <div className="font-mono text-[11px] text-text-2 truncate">{sub}</div>}
+      </div>
+    </div>
   );
 
   if (loading) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-4 animate-pulse">
-        <div className="h-5 w-48 bg-bg-2 rounded" />
-        <div className="h-32 bg-bg-2 rounded-2xl border border-line" />
-        <div className="h-64 bg-bg-2 rounded-2xl border border-line" />
+      <div>
+        {appBar(<span className="inline-block h-6 w-40 rounded bg-bg-2 animate-pulse" />)}
+        <div className="px-4 lg:px-8 max-w-5xl space-y-3 animate-pulse">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => <div key={i} className="h-28 bg-bg-1 rounded-md border border-line" />)}
+          </div>
+          <div className="h-64 bg-bg-1 rounded-md border border-line" />
+        </div>
       </div>
     );
   }
 
   if (!visitor) {
     return (
-      <div className="p-6 max-w-5xl mx-auto space-y-6">
-        {back}
-        <div className={`${CARD} p-12 text-center text-sm text-text-2`}>Foydalanuvchi topilmadi</div>
+      <div>
+        {appBar("Foydalanuvchilar ro'yxati")}
+        <div className="px-4 lg:px-8 max-w-5xl">
+          <div className={`${CARD} p-12 text-center text-sm text-text-2`}>Foydalanuvchi topilmadi</div>
+        </div>
       </div>
     );
   }
@@ -81,63 +118,74 @@ export const VisitorDetail: React.FC<{ visitorId: string; onBack: () => void }> 
   ];
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {back}
+    <div>
+      {appBar(
+        visitorName(visitor),
+        <>
+          {visitor.source}
+          {visitor.username ? ` · @${visitor.username}` : ''} · ID: {visitor.id}
+        </>,
+        <SourceTile source={visitor.source} />
+      )}
 
-      <div className={`${CARD} p-6`}>
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-accent/12 text-accent flex items-center justify-center shrink-0">
-            {visitor.source === 'WEB' ? <Globe className="w-6 h-6" /> : <Send className="w-6 h-6" />}
-          </div>
-          <div className="min-w-0">
-            <h2 className="text-xl font-bold text-text-0 truncate">{visitorName(visitor)}</h2>
-            <p className="text-xs text-text-2 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="px-1.5 py-0.5 rounded border border-line bg-bg-2 font-mono text-[10px] text-text-1">
-                {visitor.source}
-              </span>
-              {visitor.username && <span>@{visitor.username}</span>}
-              <span className="font-mono">ID: {visitor.id}</span>
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="px-4 lg:px-8 max-w-5xl space-y-4 lg:space-y-6">
+        {/* 2×2 statistika */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {stats.map(({ icon: Icon, label, value }) => (
-            <div key={label} className="p-3.5 rounded-xl bg-bg-2 border border-line">
-              <p className="text-[11px] text-text-2 flex items-center gap-1.5">
-                <Icon className="w-3.5 h-3.5 text-accent" />
-                {label}
-              </p>
-              <p className="mt-1 text-sm font-semibold text-text-0 tabular-nums">{value}</p>
+            <div key={label} className={`${CARD} p-4 flex flex-col gap-3`}>
+              <Icon className="h-4 w-4 text-text-2" />
+              <div className="min-w-0">
+                <p className="font-display text-[17px] lg:text-[19px] font-semibold text-text-0 tabular-nums leading-tight break-words">
+                  {value}
+                </p>
+                <p className="text-[12px] text-text-2 mt-0.5">{label}</p>
+              </div>
             </div>
           ))}
         </div>
-      </div>
 
-      {actionTotals.length > 0 && (
-        <div className={`${CARD} p-6`}>
-          <h3 className="text-base font-semibold text-text-0">Barcha harakatlar</h3>
-          <p className="text-xs text-text-1 mt-0.5">Barcha sessiyalar bo&apos;yicha jami</p>
-          <div className="mt-3">
-            <ActionBadges actions={actionTotals} max={actionTotals.length} />
-          </div>
-        </div>
-      )}
-
-      <div className={`${CARD} p-6`}>
-        <h3 className="text-base font-semibold text-text-0">
-          Sessiyalar <span className="text-text-2 font-normal text-sm">({sessions.length})</span>
-        </h3>
-        <p className="text-xs text-text-1 mt-0.5 mb-3">Yangilari yuqorida</p>
-        {sessions.length === 0 ? (
-          <p className="text-sm text-text-2 text-center py-6">Sessiya mavjud emas</p>
-        ) : (
-          <div className="space-y-2">
-            {sessions.map((s) => (
-              <SessionRow key={s.id} session={s} />
-            ))}
-          </div>
+        {/* Barcha harakatlar — vaqt chizig'i ro'yxati */}
+        {actionTotals.length > 0 && (
+          <section>
+            <div className="mb-2.5 flex items-end justify-between gap-3">
+              <h3 className="font-display text-[17px] font-semibold text-text-0">Barcha harakatlar</h3>
+              <p className="font-mono text-[11px] text-text-2">Barcha sessiyalar bo&apos;yicha jami</p>
+            </div>
+            <div className={`${CARD} divide-y divide-line overflow-hidden`}>
+              {actionTotals.map((a) => {
+                const { icon: Icon } = actionVisual(a.type);
+                return (
+                  <div key={a.type} className="flex min-h-[52px] items-center gap-3 px-4 py-3">
+                    <Icon className="h-4 w-4 shrink-0 text-text-2" />
+                    <span className="flex-1 min-w-0 truncate text-[14px] font-medium text-text-0">
+                      {a.type.replace(/_/g, ' ')}
+                    </span>
+                    <span className="font-mono text-[12px] text-text-1">×{a.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
+
+        {/* Sessiyalar */}
+        <section>
+          <div className="mb-2.5 flex items-end justify-between gap-3">
+            <h3 className="font-display text-[17px] font-semibold text-text-0">
+              Sessiyalar <span className="font-mono text-[13px] font-normal text-text-2">({sessions.length})</span>
+            </h3>
+            <p className="font-mono text-[11px] text-text-2">Yangilari yuqorida</p>
+          </div>
+          {sessions.length === 0 ? (
+            <div className={`${CARD} p-8 text-center text-sm text-text-2`}>Sessiya mavjud emas</div>
+          ) : (
+            <div className="space-y-2">
+              {sessions.map((s) => (
+                <SessionRow key={s.id} session={s} />
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

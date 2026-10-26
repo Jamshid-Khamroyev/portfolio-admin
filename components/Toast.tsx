@@ -29,12 +29,13 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       <Toaster
         position="top-right"
         theme="dark"
-        richColors
         toastOptions={{
+          classNames: { description: '!text-text-1' },
           style: {
             background: 'var(--bg-1)',
             border: '1px solid var(--line)',
             color: 'var(--text-0)',
+            borderRadius: '6px',
           },
         }}
       />

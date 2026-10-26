@@ -5,6 +5,20 @@ import { useEditor, useEditorState, EditorContent } from "@tiptap/react"
 import type { Editor } from "@tiptap/core"
 import StarterKit from "@tiptap/starter-kit"
 import Image, { type ImageOptions } from "@tiptap/extension-image"
+import {
+  Bold,
+  Italic,
+  Heading2,
+  Heading3,
+  List,
+  ListOrdered,
+  Quote,
+  Link2,
+  ImagePlus,
+  Undo2,
+  Redo2,
+  ExternalLink,
+} from "lucide-react"
 import { uploadApi } from "@/lib/api-client"
 import { useToast } from "@/components/Toast"
 
@@ -125,7 +139,11 @@ interface RichTextEditorProps {
 /* O'chirilgan rasm shu vaqt davomida qaytmasa (undo qilinmasa) ImageKit'dan o'chiriladi */
 const REMOVE_GRACE_MS = 3000
 
-const btn = "rounded px-3 py-1.5 text-sm text-text-1 hover:bg-bg-3"
+/* Asboblar paneli tugmasi: 44px teginish maydoni, faol holat — neytral fon */
+const tb = (active = false) =>
+  `grid h-11 w-11 shrink-0 place-items-center rounded-sm transition-colors ${
+    active ? "bg-bg-3 text-text-0" : "text-text-1 hover:bg-bg-3 hover:text-text-0"
+  }`
 
 export default function RichTextEditor({
   value,
@@ -234,8 +252,15 @@ export default function RichTextEditor({
       selector: ({ editor }) => ({
         active: !!editor?.isActive("link"),
         href: (editor?.getAttributes("link").href as string | undefined) ?? "",
+        bold: !!editor?.isActive("bold"),
+        italic: !!editor?.isActive("italic"),
+        h2: !!editor?.isActive("heading", { level: 2 }),
+        h3: !!editor?.isActive("heading", { level: 3 }),
+        bullet: !!editor?.isActive("bulletList"),
+        ordered: !!editor?.isActive("orderedList"),
+        quote: !!editor?.isActive("blockquote"),
       }),
-    }) ?? { active: false, href: "" }
+    }) ?? { active: false, href: "", bold: false, italic: false, h2: false, h3: false, bullet: false, ordered: false, quote: false }
 
   if (!editor) {
     return null
@@ -372,54 +397,54 @@ export default function RichTextEditor({
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-line bg-bg-2">
-      <div className="flex flex-wrap items-center gap-1 border-b border-line p-2">
-        <button type="button" onClick={() => editor.chain().focus().toggleBold().run()} className={`${btn} font-bold`}>
-          B
+    <div className="overflow-hidden rounded-md border border-line bg-bg-1 shadow-[var(--shadow-card)]">
+      <div className="no-scrollbar flex items-center gap-0.5 overflow-x-auto border-b border-line p-1.5">
+        <button type="button" title="H2" aria-label="H2" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={tb(linkState.h2)}>
+          <Heading2 className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleItalic().run()} className={`${btn} italic`}>
-          I
+        <button type="button" title="H3" aria-label="H3" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={tb(linkState.h3)}>
+          <Heading3 className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} className={btn}>
-          H2
+        <button type="button" title="B" aria-label="B" onClick={() => editor.chain().focus().toggleBold().run()} className={tb(linkState.bold)}>
+          <Bold className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()} className={btn}>
-          H3
+        <button type="button" title="I" aria-label="I" onClick={() => editor.chain().focus().toggleItalic().run()} className={tb(linkState.italic)}>
+          <Italic className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleBulletList().run()} className={btn}>
-          • List
+        <button type="button" title="• List" aria-label="• List" onClick={() => editor.chain().focus().toggleBulletList().run()} className={tb(linkState.bullet)}>
+          <List className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={btn}>
-          1. List
+        <button type="button" title="1. List" aria-label="1. List" onClick={() => editor.chain().focus().toggleOrderedList().run()} className={tb(linkState.ordered)}>
+          <ListOrdered className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().toggleBlockquote().run()} className={btn}>
-          Quote
+        <button type="button" title="Quote" aria-label="Quote" onClick={() => editor.chain().focus().toggleBlockquote().run()} className={tb(linkState.quote)}>
+          <Quote className="h-[18px] w-[18px]" />
         </button>
 
         <button
           type="button"
           onClick={openLinkEditor}
           title="Havola qo'shish / tahrirlash"
-          className={`rounded px-3 py-1.5 text-sm hover:bg-bg-3 ${
-            linkState.active || editingLink ? "bg-bg-3 text-accent" : "text-text-1"
-          }`}
+          aria-label="Link"
+          className={tb(linkState.active || editingLink)}
         >
-          🔗 Link
+          <Link2 className="h-[18px] w-[18px]" />
         </button>
 
         <button
           type="button"
           onClick={() => fileInput.current?.click()}
           title="Rasm qo'shish (yoki rasmni bu yerga tashlang / joylang)"
-          className={btn}
+          aria-label="Rasm"
+          className={tb()}
         >
-          🖼 Rasm
+          <ImagePlus className="h-[18px] w-[18px]" />
         </button>
 
         <input
@@ -435,12 +460,14 @@ export default function RichTextEditor({
           }}
         />
 
-        <button type="button" onClick={() => editor.chain().focus().undo().run()} className={btn}>
-          ↶
+        <span className="mx-1 h-6 w-px shrink-0 bg-line" aria-hidden />
+
+        <button type="button" title="↶" aria-label="Undo" onClick={() => editor.chain().focus().undo().run()} className={tb()}>
+          <Undo2 className="h-[18px] w-[18px]" />
         </button>
 
-        <button type="button" onClick={() => editor.chain().focus().redo().run()} className={btn}>
-          ↷
+        <button type="button" title="↷" aria-label="Redo" onClick={() => editor.chain().focus().redo().run()} className={tb()}>
+          <Redo2 className="h-[18px] w-[18px]" />
         </button>
       </div>
 
@@ -450,7 +477,7 @@ export default function RichTextEditor({
             e.preventDefault()
             saveLink()
           }}
-          className="flex flex-wrap items-center gap-2 border-b border-line bg-bg-1 px-3 py-2"
+          className="flex flex-wrap items-center gap-2 border-b border-line bg-bg-2 px-3 py-2"
         >
           <input
             autoFocus
@@ -465,19 +492,19 @@ export default function RichTextEditor({
             onChange={(e) => setLinkUrl(e.target.value)}
             onKeyDown={(e) => e.key === "Escape" && closeLinkEditor()}
             placeholder="https://example.com"
-            className="min-w-[200px] flex-1 rounded-md border border-line bg-bg-2 px-3 py-1.5 text-sm text-text-0 outline-none placeholder:text-text-2 focus:border-accent"
+            className="h-10 min-w-[200px] flex-1 rounded-sm border border-line bg-bg-1 px-3 text-sm text-text-0 outline-none placeholder:text-text-2 focus:border-accent"
           />
-          <button type="submit" className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-on-accent hover:opacity-90">
+          <button type="submit" className="h-10 rounded-sm bg-accent px-4 text-sm font-semibold text-on-accent hover:opacity-90">
             Saqlash
           </button>
-          <button type="button" onClick={closeLinkEditor} className="rounded-md px-3 py-1.5 text-sm text-text-1 hover:bg-bg-3">
+          <button type="button" onClick={closeLinkEditor} className="h-10 rounded-sm px-3 text-sm text-text-1 hover:bg-bg-3">
             Bekor qilish
           </button>
         </form>
       )}
 
       {!editingLink && linkState.active && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-line bg-bg-1 px-3 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-line bg-bg-2 px-3 py-2 text-sm">
           <span className="text-text-2">Havola:</span>
           <a
             href={linkState.href}
@@ -492,17 +519,17 @@ export default function RichTextEditor({
             href={linkState.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-md border border-line px-2.5 py-1 text-text-1 hover:border-accent-dim hover:text-accent"
+            className="inline-flex items-center gap-1 rounded-sm border border-line px-2.5 py-1 text-text-1 hover:text-text-0"
           >
-            Ochish ↗
+            Ochish <ExternalLink className="h-3 w-3" />
           </a>
-          <button type="button" onClick={openLinkEditor} className="rounded-md px-2.5 py-1 text-text-1 hover:bg-bg-3">
+          <button type="button" onClick={openLinkEditor} className="rounded-sm px-2.5 py-1 text-text-1 hover:bg-bg-3">
             Tahrirlash
           </button>
           <button
             type="button"
             onClick={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()}
-            className="rounded-md px-2.5 py-1 text-danger hover:bg-bg-3"
+            className="rounded-sm px-2.5 py-1 text-danger hover:bg-bg-3"
           >
             O&apos;chirish
           </button>
@@ -511,7 +538,7 @@ export default function RichTextEditor({
 
       <EditorContent
         editor={editor}
-        className="tiptap-editor min-h-[300px] px-4 py-3 text-sm text-text-0"
+        className="tiptap-editor min-h-[300px] px-4 py-3 text-[15px] leading-relaxed text-text-0"
       />
     </div>
   )

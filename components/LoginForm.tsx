@@ -2,7 +2,7 @@
 
 import { ThemeToggle } from './ThemeToggle';
 import React, { useState } from 'react';
-import { Terminal, Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from './AuthContext';
 import { useToast } from './Toast';
 
@@ -36,57 +36,56 @@ export const LoginForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg-0 flex items-center justify-center p-4 relative overflow-hidden">
-      <ThemeToggle className="absolute top-4 right-4 z-20" />
-      {/* Glow Effects */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-10 w-80 h-80 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-bg-0 flex items-center justify-center px-6 py-10 relative overflow-hidden">
+      <ThemeToggle className="absolute top-[max(16px,env(safe-area-inset-top))] right-4 z-20" />
 
-      <div className="w-full max-w-md bg-bg-2/90 border border-line rounded-3xl p-8 shadow-sm backdrop-blur-xl relative z-10 space-y-6">
-        {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="w-12 h-12 rounded-2xl bg-bg-3 border border-accent/40 text-accent flex items-center justify-center mx-auto shadow-sm shadow-black/10 glow-emerald-sm">
-            <Terminal className="w-6 h-6" />
-          </div>
-          <h1 className="text-xl font-bold text-text-0 tracking-tight flex items-center justify-center gap-1.5">
-            <span>Portfolio Admin</span>
-            <span className="text-accent font-mono">{`{Auth}`}</span>
+      <div className="relative z-10 w-full max-w-[400px] space-y-8">
+        {/* Brend sarlavhasi */}
+        <div className="text-center space-y-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/icon-192.png" alt="Jamshid Xamroyev" width={72} height={72} className="mx-auto h-14 w-14 rounded-md" />
+          <h1 className="pt-2 font-display text-2xl font-semibold text-text-0 tracking-tight">
+            Portfolio Admin
           </h1>
-          <p className="text-xs text-text-1">Jamshid Xamroyev boshqaruv paneliga kirish</p>
+          <p className="text-sm text-text-1">Jamshid Xamroyev boshqaruv paneliga kirish</p>
         </div>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Forma */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="text-xs font-mono text-text-1 block mb-1">
+            <label htmlFor="login-email" className="text-[13px] font-medium text-text-0 block mb-2">
               Admin Email *
             </label>
-            <div className="relative">
-              <Mail className="w-4 h-4 text-text-2 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="group relative">
+              <Mail className="w-[18px] h-[18px] text-text-2 group-focus-within:text-text-0 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors" />
               <input
+                id="login-email"
                 type="email"
                 required
+                autoComplete="username"
                 placeholder="email@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 bg-bg-2 border border-line rounded-xl text-xs text-text-0 placeholder-text-2 focus:outline-none focus:border-accent/60 font-mono"
+                className="h-12 w-full rounded-sm border border-line bg-bg-1 pl-11 pr-4 text-[15px] text-text-0 placeholder:text-text-2 focus:outline-none focus:border-accent transition-colors"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-xs font-mono text-text-1 block mb-1">
+            <label htmlFor="login-password" className="text-[13px] font-medium text-text-0 block mb-2">
               Parol *
             </label>
-            <div className="relative">
-              <Lock className="w-4 h-4 text-text-2 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <div className="group relative">
+              <Lock className="w-[18px] h-[18px] text-text-2 group-focus-within:text-text-0 absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors" />
               <input
+                id="login-password"
                 type="password"
                 required
+                autoComplete="current-password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-3.5 py-2.5 bg-bg-2 border border-line rounded-xl text-xs text-text-0 placeholder-text-2 focus:outline-none focus:border-accent/60 font-mono"
+                className="h-12 w-full rounded-sm border border-line bg-bg-1 pl-11 pr-4 text-[15px] text-text-0 placeholder:text-text-2 focus:outline-none focus:border-accent transition-colors"
               />
             </div>
           </div>
@@ -94,21 +93,21 @@ export const LoginForm: React.FC = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 rounded-xl bg-accent hover:opacity-90 text-on-accent font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-black/10 transition-colors disabled:opacity-50 mt-2"
+            className="h-12 w-full rounded-sm bg-accent hover:opacity-90 text-on-accent text-[15px] font-semibold flex items-center justify-center gap-2 transition-opacity disabled:opacity-50 !mt-7"
           >
             {submitting ? (
-              <span className="animate-spin rounded-full h-4 w-4 border-2 border-on-accent border-t-transparent" />
+              <span className="animate-spin rounded-full h-5 w-5 border-2 border-on-accent border-t-transparent" />
             ) : (
               <>
                 <span>Tizimga Kirish</span>
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-[18px] h-[18px]" />
               </>
             )}
           </button>
         </form>
 
-        <div className="pt-2 text-center text-[10px] text-text-2 font-mono flex items-center justify-center gap-1">
-          <ShieldCheck className="w-3.5 h-3.5 text-accent" />
+        <div className="text-center font-mono text-[11px] text-text-2 flex items-center justify-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5" />
           <span>Xavfsiz Token Bilan Himoyalangan (POST /api/auth/login)</span>
         </div>
       </div>

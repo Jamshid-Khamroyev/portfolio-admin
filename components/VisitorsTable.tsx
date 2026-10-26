@@ -4,16 +4,16 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   Globe,
   Send,
-  ChevronDown,
   ChevronRight,
   ChevronLeft,
   RefreshCw,
   Clock,
   LogIn,
   LogOut,
-  Zap,
 } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { formatDistanceToNowStrict } from 'date-fns';
+import { uz } from 'date-fns/locale';
 import { reviewApi } from '@/lib/api-client';
 
 /* Faqat ismi yoki username'i ma'lum foydalanuvchilar (anonim sessiyalar emas) */
@@ -76,18 +76,27 @@ export function fmtDate(iso: string): string {
   });
 }
 
+/* Nisbiy vaqt (masalan "5 daqiqa") — mavjud sanadan hisoblanadi */
+export function fmtAgo(iso: string): string {
+  try {
+    return formatDistanceToNowStrict(new Date(iso), { locale: uz });
+  } catch {
+    return fmtDate(iso);
+  }
+}
+
 export function ActionBadges({ actions, max = 5 }: { actions: { type: string; count: number }[]; max?: number }) {
   if (!actions.length) return <span className="text-text-2 text-[10px]">—</span>;
   return (
-    <div className="flex flex-wrap gap-1 mt-1">
+    <div className="flex flex-wrap gap-1.5 mt-1">
       {actions.slice(0, max).map((a) => (
-        <span key={a.type} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-bg-2 border border-line text-[9px] font-mono text-accent">
+        <span key={a.type} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-sm bg-bg-3 font-mono text-[10px] text-text-1">
           {a.type.replace(/_/g, ' ')}
-          <span className="text-accent-dim">×{a.count}</span>
+          <span className="text-text-2">×{a.count}</span>
         </span>
       ))}
       {actions.length > max && (
-        <span className="text-[10px] text-text-2">+{actions.length - max}</span>
+        <span className="font-mono text-[10px] text-text-2">+{actions.length - max}</span>
       )}
     </div>
   );
@@ -102,25 +111,25 @@ export function SessionRow({ session }: { session: VisitorSession }) {
       : null;
 
   return (
-    <div className="my-1 p-3 rounded-xl bg-bg-0 border border-line grid grid-cols-3 gap-3 text-[11px]">
-      <div className="flex flex-col gap-0.5">
-        <span className="flex items-center gap-1 text-accent font-mono">
+    <div className="p-3.5 rounded-md bg-bg-1 border border-line shadow-[var(--shadow-card)] grid grid-cols-3 gap-3 text-[11px]">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="flex items-center gap-1 text-text-2 font-mono">
           <LogIn className="w-3 h-3" />
           Kirish
         </span>
-        <span className="text-text-1">{fmtDate(enterTime)}</span>
+        <span className="text-text-0 truncate">{fmtDate(enterTime)}</span>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="flex items-center gap-1 text-danger font-mono">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="flex items-center gap-1 text-text-2 font-mono">
           <LogOut className="w-3 h-3" />
           Chiqish
         </span>
-        <span className="text-text-1">
+        <span className="text-text-0 truncate">
           {exitTime ? fmtDate(exitTime) : <span className="text-text-2">—</span>}
         </span>
       </div>
-      <div className="flex flex-col gap-0.5">
-        <span className="flex items-center gap-1 text-accent font-mono">
+      <div className="flex flex-col gap-0.5 min-w-0">
+        <span className="flex items-center gap-1 text-text-2 font-mono">
           <Clock className="w-3 h-3" />
           Davomiylik
         </span>
@@ -135,46 +144,38 @@ export function SessionRow({ session }: { session: VisitorSession }) {
   );
 }
 
+/* Manba belgisi (mamlakat kodi API'da yo'q — manba ikonkasi ko'rsatiladi) */
+export function SourceTile({ source, size = 'md' }: { source: Visitor['source']; size?: 'md' | 'lg' }) {
+  const Icon = source === 'WEB' ? Globe : Send;
+  return (
+    <span
+      className={`grid shrink-0 place-items-center rounded-md border border-line bg-bg-2 text-text-2 ${
+        size === 'lg' ? 'h-12 w-12' : 'h-10 w-10'
+      }`}
+    >
+      <Icon className={size === 'lg' ? 'h-5 w-5' : 'h-4 w-4'} />
+    </span>
+  );
+}
+
+/* Mobil ro'yxat qatori */
 function VisitorRow({ visitor, onOpen }: { visitor: Visitor; onOpen: () => void }) {
   return (
     <button
       onClick={onOpen}
-      className="w-full rounded-2xl border border-line p-4 flex items-center gap-3 bg-bg-1 hover:bg-bg-2 hover:border-accent-dim/50 transition-colors text-left"
+      className="w-full min-h-[64px] px-4 py-3 flex items-center gap-3 hover:bg-bg-2 transition-colors text-left"
     >
-      <div className="w-9 h-9 rounded-full bg-bg-3 border border-line flex items-center justify-center shrink-0">
-        {visitor.source === 'WEB' ? (
-          <Globe className="w-4 h-4 text-accent" />
-        ) : (
-          <Send className="w-4 h-4 text-accent" />
-        )}
-      </div>
-
+      <SourceTile source={visitor.source} />
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-text-0 truncate">{visitorName(visitor)}</span>
-          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border text-text-1 border-line bg-bg-2">
-            {visitor.source}
-          </span>
+        <div className="text-[15px] font-semibold text-text-0 truncate">{visitorName(visitor)}</div>
+        <div className="font-mono text-[11px] text-text-2 truncate">
+          {visitor.source} · {visitor.sessions.length || visitor.visitCount} sessiya
+          {visitor.username && visitor.firstname ? ` · @${visitor.username}` : ''}
         </div>
-        {visitor.username && visitor.firstname && (
-          <div className="text-[11px] text-text-2 truncate">@{visitor.username}</div>
-        )}
       </div>
-
-      <div className="flex items-center gap-6 shrink-0">
-        <div className="text-center hidden sm:block">
-          <div className="text-xs font-mono font-bold text-text-0">{visitor.sessions.length || visitor.visitCount}</div>
-          <div className="text-[9px] text-text-2">sessiya</div>
-        </div>
-        <div className="text-center hidden md:block">
-          <div className="text-xs font-mono font-bold text-accent">{fmtDuration(visitor.totalTime)}</div>
-          <div className="text-[9px] text-text-2">jami vaqt</div>
-        </div>
-        <div className="text-center hidden lg:block">
-          <div className="text-[10px] text-text-1 font-mono">{fmtDate(visitor.updatedAt)}</div>
-          <div className="text-[9px] text-text-2">oxirgi faollik</div>
-        </div>
-        <ChevronRight className="w-4 h-4 text-text-2" />
+      <div className="shrink-0 text-right" title={fmtDate(visitor.updatedAt)}>
+        <div className="font-mono text-[11px] text-text-2">{fmtAgo(visitor.updatedAt)}</div>
+        <div className="font-mono text-[11px] text-text-1">{fmtDuration(visitor.totalTime)}</div>
       </div>
     </button>
   );
@@ -214,59 +215,109 @@ export const VisitorsTable: React.FC = () => {
     window.scrollTo({ top: 0 });
   };
 
+  const th = 'px-4 py-2.5 text-left text-[11px] font-medium uppercase tracking-wider text-text-2';
+
   return (
-    <div className="p-6 space-y-4 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-sm font-bold text-text-0 flex items-center gap-2">
-            <Zap className="w-4 h-4 text-accent" />
+    <div>
+      {/* Sarlavha */}
+      <div className="flex items-center justify-between gap-3 px-4 pt-4 pb-3 lg:px-5 lg:pt-5">
+        <div className="min-w-0">
+          <h2 className="font-display text-[17px] font-semibold text-text-0 flex items-center gap-2">
             Foydalanuvchilar Tarixi
-            <span className="text-accent font-mono text-xs">{`{${total} ta}`}</span>
+            <span className="font-mono text-[12px] font-normal text-text-2">{total} ta</span>
           </h2>
-          <p className="text-xs text-text-2 mt-0.5">Ismi ma'lum foydalanuvchilar — batafsil ma'lumot uchun bosing</p>
+          <p className="text-xs text-text-2 mt-0.5">Ismi ma&apos;lum foydalanuvchilar — batafsil ma&apos;lumot uchun bosing</p>
         </div>
         <button
           onClick={() => load(true)}
           disabled={loading}
-          className="p-2 rounded-lg bg-bg-1 border border-line text-text-2 hover:text-accent hover:border-accent-dim/60 transition-all disabled:opacity-40"
+          aria-label="Yangilash"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border border-line text-text-2 hover:text-text-0 transition-colors disabled:opacity-40"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Table */}
       {loading ? (
-        <div className="space-y-2">
+        <div className="space-y-2 px-4 pb-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="h-16 rounded-2xl bg-bg-1 border border-line animate-pulse" />
+            <div key={i} className="h-14 rounded-sm bg-bg-2 animate-pulse" />
           ))}
         </div>
       ) : visitors.length === 0 ? (
         <div className="text-center py-12 text-text-2 text-sm">Foydalanuvchilar topilmadi</div>
       ) : (
-        <div className="space-y-2">
-          {pageItems.map((v) => <VisitorRow key={v.id} visitor={v} onOpen={() => openVisitor(v.id)} />)}
-        </div>
+        <>
+          {/* Desktop jadval */}
+          <table className="hidden md:table w-full border-t border-line">
+            <thead className="bg-bg-2">
+              <tr>
+                <th className={th}>Foydalanuvchi</th>
+                <th className={th}>sessiya</th>
+                <th className={th}>jami vaqt</th>
+                <th className={th}>oxirgi faollik</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {pageItems.map((v) => (
+                <tr
+                  key={v.id}
+                  onClick={() => openVisitor(v.id)}
+                  className="cursor-pointer hover:bg-bg-2 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="shrink-0 rounded-sm bg-bg-3 px-1.5 py-0.5 font-mono text-[10px] text-text-1">
+                        {v.source}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium text-text-0">{visitorName(v)}</div>
+                        {v.username && v.firstname && (
+                          <div className="truncate text-[11px] text-text-2">@{v.username}</div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 font-mono text-[13px] text-text-0">{v.sessions.length || v.visitCount}</td>
+                  <td className="px-4 py-3 font-mono text-[13px] text-text-0">{fmtDuration(v.totalTime)}</td>
+                  <td className="px-4 py-3 text-[13px] text-text-1" title={fmtDate(v.updatedAt)}>{fmtAgo(v.updatedAt)}</td>
+                  <td className="pr-3">
+                    <ChevronRight className="w-4 h-4 text-text-2" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Mobil ro'yxat */}
+          <div className="md:hidden divide-y divide-line border-t border-line">
+            {pageItems.map((v) => (
+              <VisitorRow key={v.id} visitor={v} onOpen={() => openVisitor(v.id)} />
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Pagination */}
+      {/* Sahifalash */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-3 pt-2">
+        <div className="flex items-center justify-center gap-3 border-t border-line py-3">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1 || loading}
-            className="p-2 rounded-lg bg-bg-1 border border-line text-text-2 hover:text-accent disabled:opacity-30 transition-all"
+            aria-label="Oldingi"
+            className="grid h-10 w-10 place-items-center rounded-sm border border-line text-text-2 hover:text-text-0 disabled:opacity-30 transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="text-xs font-mono text-text-1">
+          <span className="font-mono text-xs text-text-1">
             {page} / {totalPages}
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages || loading}
-            className="p-2 rounded-lg bg-bg-1 border border-line text-text-2 hover:text-accent disabled:opacity-30 transition-all"
+            aria-label="Keyingi"
+            className="grid h-10 w-10 place-items-center rounded-sm border border-line text-text-2 hover:text-text-0 disabled:opacity-30 transition-colors"
           >
             <ChevronRight className="w-4 h-4" />
           </button>

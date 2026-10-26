@@ -7,6 +7,7 @@ import { ToastProvider } from '@/components/Toast';
 import { AuthProvider, useAuth } from '@/components/AuthContext';
 import { Sidebar } from '@/components/Sidebar';
 import { Navbar } from '@/components/Navbar';
+import { BottomNav } from '@/components/BottomNav';
 import { LoginForm } from '@/components/LoginForm';
 
 const UsageDashboard = dynamic(() => import('@/components/UsageDashboard').then((mod) => mod.UsageDashboard), {
@@ -59,6 +60,17 @@ function DashboardInner() {
     const params = new URLSearchParams(searchParams.toString());
     params.set('tab', tab);
     params.delete('visitor');
+    params.delete('create');
+    router.replace(`?${params.toString()}`);
+  };
+
+  /* Tezkor amallar: bo'limga o'tish (ixtiyoriy — "yaratish" oynasini ochish bilan) */
+  const openTab = (tab: string, create = false) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', tab);
+    params.delete('visitor');
+    if (create) params.set('create', '1');
+    else params.delete('create');
     router.replace(`?${params.toString()}`);
   };
 
@@ -67,7 +79,7 @@ function DashboardInner() {
       <div className="min-h-screen bg-bg-0 flex items-center justify-center">
         <div className="flex flex-col items-center gap-3">
           <div className="w-10 h-10 border-2 border-accent border-t-transparent rounded-full animate-spin"></div>
-          <span className="text-xs font-mono text-accent">Admin Panel Yuklanmoqda...</span>
+          <span className="text-xs font-mono text-text-2">Admin Panel Yuklanmoqda...</span>
         </div>
       </div>
     );
@@ -78,31 +90,36 @@ function DashboardInner() {
   }
 
   return (
-    <div className="flex min-h-screen text-text-0 font-sans">
-      {/* Left Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+    <div className="min-h-screen bg-bg-0 text-text-0 font-sans">
+      {/* Chap panel — faqat desktop */}
+      <Sidebar
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
 
-      {/* Main Content View Area */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-y-auto pl-64">
-        <Navbar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-        />
+      {/* Asosiy kontent */}
+      <div className="flex min-h-screen min-w-0 flex-col lg:pl-[260px]">
+        {!(activeTab === 'using' && visitorId) && (
+          <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+        )}
 
-        <main className="flex-1 pb-12">
+        <main className="flex-1 pb-[calc(96px+env(safe-area-inset-bottom))] lg:pb-12">
           {activeTab === 'using' && (visitorId ? (
             <VisitorDetail visitorId={visitorId} onBack={() => router.back()} />
           ) : (
-            <UsageDashboard />
+            <UsageDashboard onNavigate={openTab} />
           ))}
-          {activeTab === 'blog' && <BlogManager searchQuery={searchQuery} />}
+          {activeTab === 'blog' && <BlogManager searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
           {activeTab === 'projects' && <ProjectManager />}
           {activeTab === 'chats' && <ChatLogs />}
           {activeTab === 'push' && <PushSender />}
         </main>
       </div>
+
+      {/* Pastki navigatsiya — faqat mobil */}
+      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
     </div>
   );
 }

@@ -7,12 +7,15 @@ import {
   Trash2,
   Info,
   X,
+  ChevronDown,
+  CalendarDays,
 } from 'lucide-react';
 import { ChatMessage } from '@/lib/data-store';
 import { useToast } from './Toast';
 import { uz } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { chatsApi } from '@/lib/api-client';
+import { CARD, BTN_GHOST, FilterChip, SectionHeader } from './ui';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'last_week' | 'last_month' | 'all';
 type Status = 'all' | 'answered' | 'unanswered';
@@ -50,6 +53,9 @@ export const ChatLogs: React.FC = () => {
   const [stats, setStats] = useState({ total: 0, answered: 0, unanswered: 0 });
   const [notFoundAnswer, setNotFoundAnswer] = useState<string>('');
 
+  /* Ochilgan suhbat kartalari (yuklanganda birinchisi ochiq) */
+  const [openIds, setOpenIds] = useState<Set<string>>(new Set());
+
   const [clearOpen, setClearOpen] = useState(false);
   const [clearRange, setClearRange] = useState<ClearRange>('month');
   const [clearing, setClearing] = useState(false);
@@ -63,6 +69,7 @@ export const ChatLogs: React.FC = () => {
       const data = await chatsApi.getAll({ period, status, limit: 100 });
 
       setChats(data.items ?? []);
+      setOpenIds(new Set(data.items?.[0]?.id ? [data.items[0].id] : []));
       setStats({
         total: data.total ?? 0,
         answered: data.answered ?? 0,
@@ -97,36 +104,68 @@ export const ChatLogs: React.FC = () => {
     }
   };
 
-  const selectClass =
-    'bg-bg-3 border border-accent-dim/40 text-accent py-1.5 px-2 text-xs rounded-sm';
+  const toggleOpen = (id: string) =>
+    setOpenIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const statusCount: Record<Status, number> = {
+    all: stats.total,
+    answered: stats.answered,
+    unanswered: stats.unanswered,
+  };
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-bg-1 p-5 rounded-sm border border-line shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-3 rounded-sm bg-bg-3 border border-accent-dim/40 text-accent">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-text-0 flex items-center gap-2 flex-wrap">
-              <span>Chat &amp; Muloqot Tarixi</span>
-              <span className="text-xs text-accent font-mono">
-                {chats.length} ta ko&apos;rsatilmoqda
-              </span>
-            </h2>
-            <p className="text-xs text-text-1">
-              Davrda jami {stats.total} ta · javob berilgan {stats.answered} ·
-              topilmagan {stats.unanswered}
-            </p>
-          </div>
+    <div className="px-4 lg:px-8 space-y-4 lg:space-y-5">
+      <SectionHeader
+        meta={`${chats.length} ta ko'rsatilmoqda`}
+        title="Chat & Muloqot Tarixi"
+        desc={`Davrda jami ${stats.total} ta · javob berilgan ${stats.answered} · topilmagan ${stats.unanswered}`}
+        actions={
+          <>
+            <button
+              onClick={() => void fetchChats()}
+              title="Yangilash"
+              aria-label="Yangilash"
+              className="grid h-11 w-11 place-items-center rounded-sm border border-line bg-bg-1 text-text-1 hover:text-text-0 hover:border-text-2 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            <button
+              onClick={() => setClearOpen(true)}
+              title="Tarixni tozalash"
+              aria-label="Tarixni tozalash"
+              className="grid h-11 w-11 place-items-center rounded-sm border border-line bg-bg-1 text-danger hover:bg-danger/10 transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </>
+        }
+      />
+
+      {/* Holat filtrlari + davr */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:px-0" role="group" aria-label="Holat">
+          {STATUSES.map((s) => (
+            <FilterChip
+              key={s.value}
+              active={status === s.value}
+              onClick={() => setStatus(s.value)}
+              label={s.label}
+              count={loading ? undefined : statusCount[s.value]}
+            />
+          ))}
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="relative lg:w-64">
+          <CalendarDays className="pointer-events-none absolute left-3.5 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-text-2" />
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value as Period)}
-            className={selectClass}
+            className="h-11 w-full appearance-none rounded-sm border border-line bg-bg-1 pl-11 pr-10 text-[14px] text-text-0 focus:border-accent focus:outline-none"
             aria-label="Davr"
           >
             {PERIODS.map((p) => (
@@ -135,56 +174,31 @@ export const ChatLogs: React.FC = () => {
               </option>
             ))}
           </select>
-
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as Status)}
-            className={selectClass}
-            aria-label="Holat"
-          >
-            {STATUSES.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => void fetchChats()}
-            className="px-3.5 py-1.5 rounded-sm bg-bg-3 border border-accent-dim/40 text-accent hover:bg-accent-dim hover:text-text-0 text-xs font-mono font-semibold transition-colors flex items-center gap-2"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Yangilash</span>
-          </button>
-
-          <button
-            onClick={() => setClearOpen(true)}
-            className="px-3.5 py-1.5 rounded-sm bg-bg-2 border border-danger/40 text-danger hover:bg-danger/15 text-xs font-mono font-semibold transition-colors flex items-center gap-2"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Tarixni tozalash</span>
-          </button>
+          <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-text-2" />
         </div>
       </div>
 
       {/* Tozalash oynasi */}
       {clearOpen && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-          <div className="w-full max-w-md rounded-sm border border-line bg-bg-1 p-5">
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 sm:p-4" onClick={() => setClearOpen(false)}>
+          <div
+            className="w-full sm:max-w-md rounded-t-md sm:rounded-md border border-line bg-bg-1 p-5 pb-[max(20px,env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-sm font-bold text-text-0">Tarixni tozalash</h3>
-                <p className="mt-1 text-xs text-text-1">
+                <h3 className="font-display text-[17px] font-semibold text-text-0">Tarixni tozalash</h3>
+                <p className="mt-1 text-[13px] text-text-1">
                   Qaysi muddatdan eski suhbatlar o&apos;chirilsin?
                 </p>
               </div>
 
               <button
                 onClick={() => setClearOpen(false)}
-                className="text-text-2 hover:text-text-0"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-sm text-text-2 hover:bg-bg-2 hover:text-text-0"
                 aria-label="Yopish"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -192,49 +206,46 @@ export const ChatLogs: React.FC = () => {
               {CLEAR_RANGES.map((r) => (
                 <label
                   key={r.value}
-                  className={`flex cursor-pointer items-center justify-between gap-3 rounded-sm border px-3 py-2 text-xs transition-colors ${
+                  className={`flex min-h-[48px] cursor-pointer items-center justify-between gap-3 rounded-sm border px-3.5 py-2.5 text-[13px] transition-colors ${
                     clearRange === r.value
-                      ? 'border-accent-dim bg-bg-3 text-accent'
-                      : 'border-line text-text-1 hover:border-accent-dim/50'
+                      ? 'border-text-1 bg-bg-2 text-text-0'
+                      : 'border-line text-text-1 hover:border-text-2'
                   }`}
                 >
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2.5">
                     <input
                       type="radio"
                       name="clear-range"
                       value={r.value}
                       checked={clearRange === r.value}
                       onChange={() => setClearRange(r.value)}
-                      className="accent-accent"
+                      className="accent-accent h-4 w-4"
                     />
                     {r.label}
                   </span>
-                  <span className="text-[10px] text-text-2">{r.hint}</span>
+                  <span className="font-mono text-[11px] text-text-2">{r.hint}</span>
                 </label>
               ))}
             </div>
 
             {clearRange === 'all' && (
-              <p className="mt-3 rounded-sm border border-danger/40 bg-bg-2 px-3 py-2 text-[11px] text-danger">
+              <p className="mt-3 rounded-sm border border-danger/30 bg-danger/10 px-3.5 py-2.5 text-[12px] text-danger">
                 Diqqat: butun suhbat tarixi o&apos;chiriladi va qaytarib
                 bo&apos;lmaydi.
               </p>
             )}
 
             <div className="mt-5 flex items-center justify-end gap-2">
-              <button
-                onClick={() => setClearOpen(false)}
-                className="px-3 py-1.5 text-xs text-text-1 hover:text-text-0"
-              >
+              <button onClick={() => setClearOpen(false)} className={BTN_GHOST}>
                 Bekor qilish
               </button>
 
               <button
                 onClick={() => void handleClear()}
                 disabled={clearing}
-                className="px-4 py-1.5 rounded-sm bg-danger/15 text-warn text-xs font-bold hover:bg-danger/15 disabled:opacity-50 flex items-center gap-2"
+                className="inline-flex h-10 items-center gap-2 rounded-sm bg-danger px-4 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-50"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
                 {clearing ? "O'chirilmoqda..." : "O'chirish"}
               </button>
             </div>
@@ -242,27 +253,28 @@ export const ChatLogs: React.FC = () => {
         </div>
       )}
 
-      {/* Messages & AI Responses */}
+      {/* Suhbatlar */}
       {loading ? (
-        <div className="space-y-4 animate-pulse">
+        <div className="space-y-3 animate-pulse">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-36 bg-bg-2 rounded-2xl border border-line"></div>
+            <div key={i} className="h-[76px] bg-bg-1 rounded-md border border-line"></div>
           ))}
         </div>
       ) : chats.length === 0 ? (
-        <div className="p-12 text-center bg-bg-1 rounded-2xl border border-line">
-          <MessageSquare className="w-12 h-12 text-text-2 mx-auto mb-3" />
-          <h3 className="text-sm font-bold text-text-1">Xabarlar topilmadi</h3>
-          <p className="text-xs text-text-2 mt-1">
+        <div className={`${CARD} p-12 text-center`}>
+          <MessageSquare className="w-10 h-10 text-text-2 mx-auto mb-3" />
+          <h3 className="font-display text-base font-semibold text-text-0">Xabarlar topilmadi</h3>
+          <p className="text-[13px] text-text-2 mt-1">
             Tanlangan davr va filtr uchun muloqot xabarlari mavjud emas.
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {chats.map((chat) => {
             const isUnanswered = Boolean(
               notFoundAnswer && chat.answer === notFoundAnswer
             );
+            const isOpen = openIds.has(chat.id);
 
             const createdAt = format(new Date(chat.createdAt), 'd MMMM yyyy, HH:mm', {
               locale: uz,
@@ -271,55 +283,65 @@ export const ChatLogs: React.FC = () => {
             return (
               <div
                 key={chat.id}
-                className={`rounded-sm border p-4 ${
-                  isUnanswered
-                    ? 'border-line bg-bg-2'
-                    : 'border-line bg-bg-2'
-                }`}
+                className={`rounded-md border bg-bg-1 shadow-[var(--shadow-card)] transition-colors ${isOpen ? 'border-text-2' : 'border-line'}`}
               >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* User question */}
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      <User className="h-4 w-4 text-accent" />
-                      <span className="text-xs font-medium text-text-1">Foydalanuvchi</span>
-                    </div>
+                <button
+                  type="button"
+                  onClick={() => toggleOpen(chat.id)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center gap-3 p-4 text-left"
+                >
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-bg-3 text-text-2">
+                    <User className="h-[18px] w-[18px]" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-[14px] font-medium text-text-0 ${isOpen ? 'line-clamp-2' : 'truncate'}`}>
+                      {chat.content}
+                    </span>
+                    <span className="mt-0.5 block font-mono text-[11px] text-text-2">{createdAt}</span>
+                  </span>
+                  <span
+                    className={`h-2 w-2 shrink-0 rounded-full ${isUnanswered ? 'bg-warn' : 'bg-accent'}`}
+                    title={isUnanswered ? 'Javob topilmadi' : 'AI yordamchi'}
+                  />
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-text-2 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
 
-                    <p className="text-sm leading-6 text-text-0">{chat.content}</p>
-                  </div>
-
-                  {/* AI answer */}
-                  <div>
-                    <div className="mb-2 flex items-center gap-2">
-                      {isUnanswered ? (
-                        <>
-                          <Info className="h-4 w-4 text-text-2" />
-                          <span className="text-xs font-medium text-text-1">
-                            Javob topilmadi
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <Bot className="h-4 w-4 text-accent" />
-                          <span className="text-xs font-medium text-accent">AI yordamchi</span>
-                        </>
-                      )}
-                    </div>
-
-                    {isUnanswered ? (
-                      <p className="text-sm leading-6 text-text-2 italic">
-                        Bilim bazasidan mos ma&apos;lumot topilmadi — bu savol
-                        uchun material qo&apos;shish kerak bo&apos;lishi mumkin.
+                {isOpen && (
+                  <div className="space-y-3 px-4 pb-4">
+                    {/* Foydalanuvchi — o'ng tomonda */}
+                    <div className="flex flex-col items-end">
+                      <span className="mb-1 font-mono text-[10px] text-text-2">Foydalanuvchi</span>
+                      <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md bg-bg-3 px-3.5 py-2.5 text-[14px] leading-6 text-text-0">
+                        {chat.content}
                       </p>
+                    </div>
+
+                    {/* AI — chap tomonda */}
+                    {isUnanswered ? (
+                      <div className="flex flex-col items-start gap-2">
+                        <span className="inline-flex items-center gap-1.5 rounded-sm bg-warn/10 px-2 py-0.5 text-[12px] font-medium text-warn">
+                          <Info className="h-3.5 w-3.5" />
+                          Javob topilmadi
+                        </span>
+                        <p className="max-w-[85%] text-[13px] leading-6 text-text-2 italic">
+                          Bilim bazasidan mos ma&apos;lumot topilmadi — bu savol
+                          uchun material qo&apos;shish kerak bo&apos;lishi mumkin.
+                        </p>
+                      </div>
                     ) : (
-                      <p className="text-sm leading-6 text-text-0">{chat.answer}</p>
+                      <div className="flex flex-col items-start">
+                        <span className="mb-1 inline-flex items-center gap-1 font-mono text-[10px] text-text-2">
+                          <Bot className="h-3 w-3" />
+                          AI yordamchi
+                        </span>
+                        <p className="max-w-[85%] whitespace-pre-wrap break-words rounded-md border border-line bg-bg-2 px-3.5 py-2.5 text-[14px] leading-6 text-text-0">
+                          {chat.answer}
+                        </p>
+                      </div>
                     )}
                   </div>
-                </div>
-
-                <div className="border-t border-line p-1 m-1 text-right">
-                  <span className="text-[11px] text-text-2">{createdAt}</span>
-                </div>
+                )}
               </div>
             );
           })}

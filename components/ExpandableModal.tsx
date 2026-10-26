@@ -1,11 +1,15 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 
 interface ExpandableModalProps {
   title: React.ReactNode;
   icon: React.ReactNode;
+  /** Sarlavha ostidagi kichik holat qatori (masalan "Qoralama saqlandi") */
+  subtitle?: React.ReactNode;
+  /** Ilova panelining o'ng tomonidagi amallar (masalan "Chop etish") */
+  actions?: React.ReactNode;
   /** Yopish — qoralama saqlanib qoladi, ma'lumot yo'qolmaydi */
   onClose: () => void;
   /** Normal holatdagi kenglik klassi */
@@ -15,13 +19,23 @@ interface ExpandableModalProps {
   children: React.ReactNode;
 }
 
+/* Tailwind dinamik klasslarni ko'rmaydi — shuning uchun aniq ro'yxat */
+const LG_WIDTH: Record<string, string> = {
+  'max-w-xl': 'lg:max-w-xl',
+  'max-w-2xl': 'lg:max-w-2xl',
+  'max-w-3xl': 'lg:max-w-3xl',
+  'max-w-4xl': 'lg:max-w-4xl',
+};
+
 /*
-  Oddiy holatda markazdagi modal, "kattalashtirish" bosilganda — to'liq ekran.
+  Mobil: har doim to'liq ekran. Desktop: markazdagi modal, "kattalashtirish" bosilganda — to'liq ekran.
   Ichki kontent (forma) o'zi scroll bo'ladi.
 */
 export const ExpandableModal: React.FC<ExpandableModalProps> = ({
   title,
   icon,
+  subtitle,
+  actions,
   onClose,
   widthClass = 'max-w-2xl',
   persistKey,
@@ -37,6 +51,15 @@ export const ExpandableModal: React.FC<ExpandableModalProps> = ({
     }
   });
 
+  /* Orqa fondagi sahifa scroll bo'lmasin */
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   const toggleExpanded = () => {
     setExpanded((prev) => {
       const next = !prev;
@@ -51,44 +74,43 @@ export const ExpandableModal: React.FC<ExpandableModalProps> = ({
 
   return (
     <div
-      className={`fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex ${
-        expanded ? 'p-0' : 'items-center justify-center p-4'
+      className={`fixed inset-0 z-50 flex bg-bg-0 lg:bg-black/60 ${
+        expanded ? 'lg:p-0' : 'lg:items-center lg:justify-center lg:p-6'
       }`}
     >
       <div
-        className={`bg-bg-1 border border-line flex flex-col overflow-hidden shadow-xl ${
-          expanded
-            ? 'w-full h-full rounded-none border-0'
-            : `w-full ${widthClass} max-h-[92vh] rounded-2xl`
+        className={`flex w-full flex-col overflow-hidden bg-bg-0 lg:bg-bg-1 ${
+          expanded ? 'h-full' : `h-full lg:h-auto ${LG_WIDTH[widthClass] ?? 'lg:max-w-2xl'} lg:max-h-[92vh] lg:rounded-md lg:border lg:border-line`
         }`}
       >
-        <div className="px-5 py-4 border-b border-line flex items-center justify-between bg-bg-0 shrink-0">
-          <div className="flex items-center gap-2 text-accent font-mono text-sm font-bold">
-            {icon}
-            <span>{title}</span>
+        <div className="flex shrink-0 items-center gap-2 border-b border-line bg-bg-0 lg:bg-bg-1 px-2 pt-[max(8px,env(safe-area-inset-top))] pb-2 lg:px-4 lg:py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            title="Yopish (qoralama saqlanadi)"
+            aria-label="Yopish"
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-sm text-text-0 hover:bg-bg-2 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          <span className="hidden lg:grid h-8 w-6 shrink-0 place-items-center text-text-2">{icon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="truncate font-display text-[17px] lg:text-[16px] font-semibold text-text-0">{title}</div>
+            {subtitle && <div className="truncate font-mono text-[11px] text-text-2">{subtitle}</div>}
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={toggleExpanded}
-              title={expanded ? 'Kichraytirish' : 'To‘liq ekran'}
-              className="p-1.5 rounded-lg text-text-1 hover:text-accent hover:bg-bg-3 transition-colors"
-            >
-              {expanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-            </button>
-            <button
-              type="button"
-              onClick={onClose}
-              title="Yopish (qoralama saqlanadi)"
-              className="p-1.5 rounded-lg text-text-1 hover:text-text-0 hover:bg-bg-3 transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={toggleExpanded}
+            title={expanded ? 'Kichraytirish' : 'To‘liq ekran'}
+            className="hidden lg:grid h-10 w-10 shrink-0 place-items-center rounded-sm text-text-1 hover:text-text-0 hover:bg-bg-2 transition-colors"
+          >
+            {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+          {actions && <div className="flex shrink-0 items-center gap-2 pr-1">{actions}</div>}
         </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className={expanded ? 'max-w-4xl mx-auto w-full' : ''}>{children}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+          <div className={expanded ? 'mx-auto w-full max-w-4xl' : ''}>{children}</div>
         </div>
       </div>
     </div>

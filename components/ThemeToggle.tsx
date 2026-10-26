@@ -31,7 +31,7 @@ export const ThemeToggle: React.FC<{ className?: string }> = ({ className = '' }
       onClick={toggle}
       aria-label={theme === 'dark' ? 'Kun rejimiga o‘tish' : 'Tun rejimiga o‘tish'}
       title={theme === 'dark' ? 'Kun rejimi' : 'Tun rejimi'}
-      className={`grid h-9 w-9 place-items-center rounded-lg border border-line bg-bg-2 text-text-1 hover:text-accent hover:border-accent-dim/50 transition-colors ${className}`}
+      className={`grid h-10 w-10 place-items-center rounded-sm border border-line bg-bg-1 text-text-1 hover:text-text-0 hover:border-text-2 transition-colors ${className}`}
     >
       {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>
